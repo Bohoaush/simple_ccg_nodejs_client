@@ -1,0 +1,24 @@
+{
+"PlaylistItems": [
+    {
+        "id":"0",
+        "name":"AMB-default-ccg",
+        "path":"/home/bohoaush/caspar/200926/server/casparcg_server/media/AMB.mp4",
+        "startMode":"fixed",
+        "startTime":"20210624120000",
+        "startAt":"0",
+        "endAt":"auto",
+        "duration":""
+    },
+    {
+        "id":"1",
+        "name":"Big buck bunny",
+        "path":"/home/bohoaush/caspar/200926/server/casparcg_server/media/mp4_h264.mp4",
+        "startMode":"auto",
+        "startTime":"",
+        "startAt":"0",
+        "endAt":"auto",
+        "duration":""
+    }
+]
+}
