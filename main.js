@@ -121,7 +121,7 @@ loadPlaylist('playlist_template.json');
 
 function loadPlaylist(filename) {
     
-    try {
+    //try {
     fs.readFile(filename, function(err, data) {
         if (playlist != null) { var temporaryOldPlaylist = playlist; }
         playlist = JSON.parse(data);
@@ -129,18 +129,114 @@ function loadPlaylist(filename) {
         // TODO check for media durations and write values back to playlist
         // TODO add next event times to array and check for them
     });
-    } catch {
+    /*} catch {
         console.log("ERROR: Can't load playlist file!");
-    }
+    }*/
 }
 
 function asignDurationsToPly(plitem, index) {
     var pathToProbe = plitem.path;
-    console.log(pathToProbe);
+    console.log("checking media: " + pathToProbe);
     
-    console.log(fullMediaInfo);
+    
+    //Fully coppied code, don't know what it does yet
+    /*const getInfos = () => {
+    ccgtunnel.info().then(function(fulfilled){
+        console.log('RESPONSE!');
+        console.log(fulfilled.response.data);
+    },function(reason){
+        console.log("-------REASON------");
+        console.log(reason);
+    });
+    };*/
+    
+    
+    // CINF through casparcg-connection doesn't work at the moment :(
+    // TODO try _callback again
+    //var mediaInfo = await ccgtunnel.cinf(pathToProbe);
+    
+    // Using http GET to media-scanner directly instead | I probably messed something up, doesn't work either...
+    
+    var duration = 0;
+    
+    const options = {
+        hostname: '127.0.0.1',
+        port: 8000,
+        path: '/cinf/' + pathToProbe,
+        method: 'GET'
+    }
+
+    const req = http.request(options, res => {
+        console.log(`statusCode: ${res.statusCode}`)
+
+        res.on('data', d => {
+            process.stdout.write(d);
+            mediaInfoArray = (d + '').split(" ");
+            if (logLevel > 1) { console.log(mediaInfoArray); }
+            var framerate = mediaInfoArray[9].replace('1/','')
+            var framecount = mediaInfoArray[8];
+            if (logLevel > 1) { console.log("DEBUG: frame count: " + framecount + " / framerate: " + framerate); }
+            var duration = (framecount / framerate);
+            if (logLevel > 1) { console.log("DEBUG: Returning duration " + duration); }
+            return duration;
+            
+        })
+    })
+
+    req.on('error', error => {
+        console.error(error);
+        return false;
+    })
+
+    req.end()
+    
+    //console.log(mediaInfo);
+    
+    
+    //console.log(fullMediaInfo);
     //plitem.duration = 
 }
+
+function getDurationFromMediaInfo(mediaInfoString, _callback) {
+    mediaInfoArray = mediaInfoString.split(" ");
+    if (logLevel > 1) { console.log(mediaInfoArray); }
+    // 0 - status, 1 - OSCpath, 2 - statusVerbal, 3 - space, 4 - type (MOVIE), 5 - space,
+    // 6 - filesize, 7 - last modified, 8 - frame count, 9 - 1/framerate
+    var duration = (mediaInfoArray[8] * mediaInfoArray[9]); // Should get duration in seconds
+    return duration;
+    
+    _callback();
+}
+
+/*function getMediaInfoViaHttp (pathToProbe, _callback) {
+    
+    const options = {
+        hostname: '127.0.0.1',
+        port: 8000,
+        path: '/cinf/' + pathToProbe,
+        method: 'GET'
+    }
+
+    const req = http.request(options, res => {
+        console.log(`statusCode: ${res.statusCode}`)
+
+        res.on('data', d => {
+            process.stdout.write(d);
+            return d;
+        })
+    })
+
+    req.on('error', error => {
+        console.error(error);
+        return false;
+    })
+
+    req.end()
+    
+    
+    _callback();
+}*/ //Isn't used?
+
 
 
 setInterval(function(){checkTime()}, 1000);
