@@ -2,21 +2,21 @@
 "PlaylistItems": [
     {
         "id":"0",
+        "type":"clip",
         "name":"AMB-default-ccg",
         "path":"AMB",
         "startMode":"fixed",
         "startTime":"20210624120000",
-        "startAt":"0",
         "endAt":"auto",
         "duration":""
     },
     {
         "id":"1",
+        "type":"clip",
         "name":"Big buck bunny",
         "path":"mp4_h264",
         "startMode":"auto",
         "startTime":"",
-        "startAt":"0",
         "endAt":"auto",
         "duration":""
     }
