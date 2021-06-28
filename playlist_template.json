@@ -5,8 +5,8 @@
         "type":"clip",
         "name":"AMB-default-ccg",
         "path":"AMB",
-        "startMode":"fixed",
-        "startTime":"20210624120000",
+        "startMode":"auto",
+        "startTime":"20210628210300",
         "endAt":"auto",
         "duration":""
     },

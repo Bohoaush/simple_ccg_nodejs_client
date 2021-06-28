@@ -3,14 +3,25 @@
  <head>
     <meta charset="utf-8">
     <title>Playlist editor | nodecg CCG client</title>
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    
  </head>
  <body>
     <input name="play_btn" id="play_btn" value="play" type="submit" />
+    <input name="stop_btn" id="stop_btn" value="stop" type="submit" />
  </body>
  
- <script>
+    <script>
         $('#play_btn').click(function(){
-            $.post('/test')
+            $.get('/test')
+        });
+        
+        $('#stop_btn').click(function(){
+            //$.get('?act="stop"')
+            var urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('act', 'stop');
+            window.location.search = urlParams;
         });
     </script>
  

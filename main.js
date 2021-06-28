@@ -9,6 +9,11 @@ var currentTime = 0; // Variable for time in seconds since Jan 1st 1970
 
 var playlist;
 
+var status = "stoped";
+var currentlyPlaying = -1;
+var loadedNext = -1;
+var previousCCGinfo = false;
+
 var fixedEventsIds = [];
 var fixedEventsTimes = [];
 var fixedEventsAt = 0;
@@ -18,7 +23,7 @@ var logLevel = 2; // Set console log level: 0 - error, 1 - warning, 2 - debug, 3
 var ccg_ip = "127.0.0.1"; // Set CasparCG server Ip address
 var ccg_port = 5250; // Set CasparCG server port
 var interface_port = 8084;
-var media_scanner_port = 8000; // Not used yet
+var media_scanner_port = 8000;
 //--------------------------------------------------------------------------------------------
 
 // Start http interface from file
@@ -56,7 +61,8 @@ http.createServer(function (req, res) {
                 } else if (act == "resume") {
                     
                 } else if (act == "stop") {
-                    
+                    ccgtunnel.stop(1, 1);
+                    status = "stopped";
                 } else {
                     console.log("ERROR: act parameter doesn't contain valid event");
                 }
@@ -73,13 +79,18 @@ http.createServer(function (req, res) {
         trouble();
     }
     
+    if (req.url == "/test") {
+        ccgtunnel.play(1, 1);
+        status = "playing";
+    }
+    
 }).listen(interface_port);
 
 // Log localhost http server start to console
 console.log('Server running at http://127.0.0.1:' + interface_port);
 
 // Initialize CasparCG connection
-var ccgtunnel = new CasparCG("127.0.0.1", 5250);
+var ccgtunnel = new CasparCG(ccg_ip, ccg_port);
 
 // Send CasparCG play command
 function play(channel, layer, itemname) {
@@ -93,10 +104,12 @@ function play(channel, layer, itemname) {
     } else {
         console.log("ERROR: Play called, but no itemname specified");
     }
+    status = "playing";
 }
 
 function trouble() { // Will eventually be used as item to play, if something goes wrong
     ccgtunnel.play(1, 1, "AMB");
+    status = "trouble";
 }
 
 function findPathFromPlyId(ply_id, _callback) {
@@ -145,6 +158,8 @@ function asignDurationsToPly(plitem, index) {
         if (logLevel > 1) { console.log("DEBUG: Adding event to fixed events"); }
         fixedEventsIds.push(index);
         fixedEventsTimes.push(startTime);
+        console.log(fixedEventsIds);
+        console.log(fixedEventsTimes);
     } else if (startMode == "fixed") {
         if (logLevel > 0) { console.log("WARNING: Found event in fixed mode without valid start time, ignoring"); }
     }
@@ -157,7 +172,7 @@ function asignDurationsToPly(plitem, index) {
         
         const options = {
             hostname: '127.0.0.1',
-            port: 8000,
+            port: media_scanner_port,
             path: '/cinf/' + pathToProbe,
             method: 'GET'
         }
@@ -176,6 +191,13 @@ function asignDurationsToPly(plitem, index) {
                 if (logLevel > 1) { console.log("DEBUG: Returning duration " + duration); }
                 //return duration;
                 plitem.duration = duration;
+                /*if (previousDuration > 0 && previousStartTime > 0 && startMode != "fixed") {
+                    if (previousStartMode != "fixed") {
+                        
+                    } else {
+                        // TODO Redo after implementing auto-seek on fixed time events
+                    }
+                }*/ // TODO later
                 var plyWriteback = JSON.stringify(playlist);
                 fs.writeFile('playlist_template_aed.json', plyWriteback, (err) => {
                     if (err) throw err;
@@ -234,17 +256,40 @@ function checkTime() {
     
     if (logLevel > 2) { console.log("DEBUG: Time: " + currentTime); }
     
-    if (if fixedEventsIds.length > 0) {
-        if (fixedEventsTimes[fixedEventsAt] >= currentTimeHR) {
-            var playPath = findPathFromPlyId(fixedEventsIds[fixedEventsAt]);
+    if (fixedEventsIds.length > 0) {
+        if (fixedEventsTimes[fixedEventsAt] <= currentTimeHR) {
+            var playId = fixedEventsIds[fixedEventsAt];
+            var playPath = findPathFromPlyId(playId);
             console.log("AFTER RETURN: " + playPath);
+            // TODO Check how long it should have been already played and SEEK
             if (playPath != false) {
                 play(1, 1, playPath);
                 console.log("Started fixed event " + playPath);
                 fixedEventsAt += 1;
+                currentlyPlaying = playId;
+                loadedNext = playId;
+                status = "playing";
             } else {
                 console.log("ERROR: Can't find path for item " + itemid);
             }
         }
     }
+    
+    //Check what is currently playing
+    if (status == "playing" && previousCCGinfo != false) {
+        var detectCurrentlyPlaying = ccgtunnel.info(1, 1);
+        if (previousCCGinfo != detectCurrentlyPlaying) {
+            currentlyPlaying += 1;
+            previousCCGinfo = detectCurrentlyPlaying;
+        }
+    }
+    
+    // TODO Automatic loadbg of next items
+    if (loadedNext == currentlyPlaying && status == "playing") {
+        loadedNext += 1;
+        var loadNextPath = playlist.PlaylistItems[loadedNext].path;
+        ccgtunnel.loadbgAuto(1, 1, loadNextPath);
+        if (logLevel > 2) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
+    }
+    
 }
