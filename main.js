@@ -18,6 +18,9 @@ var fixedEventsIds = [];
 var fixedEventsTimes = [];
 var fixedEventsAt = 0;
 
+var delayInfoDefault = 8;
+var delayInfo = delayInfoDefault;
+
 //------------------------------User changeable variables-------------------------------------
 var logLevel = 2; // Set console log level: 0 - error, 1 - warning, 2 - debug, 3 - show time updates too
 var ccg_ip = "127.0.0.1"; // Set CasparCG server Ip address
@@ -269,6 +272,7 @@ function checkTime() {
                 currentlyPlaying = playId;
                 loadedNext = playId;
                 status = "playing";
+                previousCCGinfo = ccgtunnel.info(1, 1);
             } else {
                 console.log("ERROR: Can't find path for item " + itemid);
             }
@@ -276,20 +280,44 @@ function checkTime() {
     }
     
     //Check what is currently playing
-    if (status == "playing" && previousCCGinfo != false) {
-        var detectCurrentlyPlaying = ccgtunnel.info(1, 1);
+    /*if (status == "playing" && previousCCGinfo != false) {
+        if (logLevel > 1) { console.log("DEBUG: Checking currently playing"); }
+        var detectCurrentlyPlaying = getCurrentCCGinfo();
         if (previousCCGinfo != detectCurrentlyPlaying) {
+            if (logLevel > 1) { console.log("DEBUG: Currently playing changed"); }
+            console.log(previousCCGinfo + detectCurrentlyPlaying);
             currentlyPlaying += 1;
             previousCCGinfo = detectCurrentlyPlaying;
         }
-    }
+    }*/ // Move to func getCurrentCCGinfo
+    getCurrentCCGinfo()
     
     // TODO Automatic loadbg of next items
     if (loadedNext == currentlyPlaying && status == "playing") {
         loadedNext += 1;
         var loadNextPath = playlist.PlaylistItems[loadedNext].path;
         ccgtunnel.loadbgAuto(1, 1, loadNextPath);
-        if (logLevel > 2) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
+        if (logLevel > 1) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
     }
     
+}
+
+async function getCurrentCCGinfo(_callback) { // Check currently playing item and if not same as in previous check, LOADBG next
+    delayInfo -= 1;
+    if (status == "playing" && previousCCGinfo != false && delayInfo < 1) {
+        try {
+            var fullCCGinfo = await ccgtunnel.info(1, 1);
+            var CCGresponse = fullCCGinfo.response;
+            var curPlayingName = CCGresponse.data.stage.layer.layer_1.foreground.file.name;
+            console.log("DEBUG: Got currently playing info: " + curPlayingName);
+            delayInfo = delayInfoDefault;
+            if (previousCCGinfo != curPlayingName) {
+                currentlyPlaying += 1;
+                previousCCGinfo = curPlayingName;
+            }
+        } catch(e) {
+            console.log("ERROR: " + e);
+        }
+    }
+    _callback
 }
