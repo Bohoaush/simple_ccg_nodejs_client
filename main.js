@@ -18,7 +18,7 @@ var fixedEventsIds = [];
 var fixedEventsTimes = [];
 var fixedEventsAt = 0;
 
-var delayInfoDefault = 8;
+var delayInfoDefault = 3;
 var delayInfo = delayInfoDefault;
 
 //------------------------------User changeable variables-------------------------------------
@@ -269,7 +269,7 @@ function checkTime() {
                 play(1, 1, playPath);
                 console.log("Started fixed event " + playPath);
                 fixedEventsAt += 1;
-                currentlyPlaying = playId;
+                currentlyPlaying = (playId - 1);
                 loadedNext = playId;
                 status = "playing";
                 previousCCGinfo = ccgtunnel.info(1, 1);
@@ -304,7 +304,7 @@ function checkTime() {
 
 async function getCurrentCCGinfo(_callback) { // Check currently playing item and if not same as in previous check, LOADBG next
     delayInfo -= 1;
-    if (status == "playing" && previousCCGinfo != false && delayInfo < 1) {
+    if (status == "playing" && delayInfo < 1) {
         try {
             var fullCCGinfo = await ccgtunnel.info(1, 1);
             var CCGresponse = fullCCGinfo.response;
