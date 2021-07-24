@@ -2,7 +2,7 @@ var http = require("http"); // For web interface
 var fs = require("fs"); // For filesystem I/O
 var url = require("url"); // For parsing url parameters
 const {CasparCG} = require("casparcg-connection"); // For CasparCG communication
-const mediainfo = require('node-mediainfo'); // For getting media duration, Probably unused TODO remove unused
+//const mediainfo = require('node-mediainfo'); // For getting media duration, Probably unused TODO remove unused
 
 var currentTimeHR = 0; // Variable for human readable time
 var currentTime = 0; // Variable for time in seconds since Jan 1st 1970
@@ -13,6 +13,7 @@ var status = "stoped";
 var currentlyPlaying = -1;
 var loadedNext = -1;
 var previousCCGinfo = false;
+var startedPlayingAt = 0;
 
 var fixedEventsIds = [];
 var fixedEventsTimes = [];
@@ -33,10 +34,10 @@ var media_scanner_port = 8000;
 http.createServer(function (req, res) {
     fs.readFile('ply_editor.html', function(err, data) {
         res.writeHead(200, {'Content-Type': 'text/html'});
-        res.write(data);
-        return res.end();
+    res.write(data);
+    return res.end();
 
-    });
+});
     
     var parts = url.parse(req.url, true);
     var query = parts.query;
@@ -138,20 +139,14 @@ async function loadPlaylist(filename) {
     fs.readFile(filename, function(err, data) {
         if (playlist != null) { var temporaryOldPlaylist = playlist; }
         playlist = JSON.parse(data);
-        playlist.PlaylistItems.forEach(asignDurationsToPly); //REPLACED with for loop to support await
-        
-        /*var itemForOfAt = 0;
-        for (const plitem of playlist.PlaylistItems) {
-            itemForOfAt += 1;
-            var testConsoleOutput = await asignDurationsToPly(plitem, itemForOfAt)
-            console.log("DEBUG MASTER NOW: " + testConsoleOutput);
-        }*/
+        playlist.PlaylistItems.forEach(asignDurationsToPly); 
         
     });
     /*} catch {
         console.log("ERROR: Can't load playlist file!");
     }*/
 }
+
 
 async function asignDurationsToPly(plitem, index) {
     var pathToProbe = plitem.path;
@@ -179,110 +174,24 @@ async function asignDurationsToPly(plitem, index) {
         
         var duration = 0;
         
-        /*const options = {
-            hostname: '127.0.0.1',
-            port: media_scanner_port,
-            path: '/cinf/' + pathToProbe,
-            method: 'GET'
-        }
-
-        const req = http.request(options, res => {
-            console.log(`statusCode: ${res.statusCode}`)
-
-            res.on('data', d => {
-                process.stdout.write(d);
-                mediaInfoArray = (d + '').split(" ");
-                if (logLevel > 1) { console.log(mediaInfoArray); }
-                var framerate = mediaInfoArray[9].replace('1/','')
-                var framecount = mediaInfoArray[8];
-                if (logLevel > 1) { console.log("DEBUG: frame count: " + framecount + " / framerate: " + framerate); }
-                var duration = (framecount / framerate);
-                if (logLevel > 1) { console.log("DEBUG: Returning duration " + duration); }
-                //return duration;
-                plitem.duration = duration;
-                /*if (previousDuration > 0 && previousStartTime > 0 && startMode != "fixed") {
-                    if (previousStartMode != "fixed") {
-                        
-                    } else {
-                        // TODO Redo after implementing auto-seek on fixed time events
-                    }
-                }*/ // TODO later
-                /*var plyWriteback = JSON.stringify(playlist);
+        // Gets CINF (file info) and processes to get needed values, if anything goes wrong, catch writes error in console
+        ccgtunnel.cinf(pathToProbe).then(result => {
+            var framecount = result.response.data.duration;
+            var framerate = result.response.data.fps; // Framerate is returned in format 1/fps => additional processing is needed
+            framerate = framerate.replace("1/", "");
+            var duration = framecount / framerate;
+            console.log("DEBUG: Duration of \"" + pathToProbe + "\" in seconds = " + duration);
+            plitem.duration = duration;
+            var plyWriteback = JSON.stringify(playlist);
                 fs.writeFile('playlist_template_aed.json', plyWriteback, (err) => {
                     if (err) throw err;
                     if ( logLevel > 1 ) { console.log('Data written to file'); }
-                });
-                
-            })
-        })
-
-        req.on('error', error => {
-            console.error(error);
-            return false;
-        })
-
-        req.end()*/
-                
-        //INSPIRED BY
-        /*var fullCCGinfo = await ccgtunnel.info(1, 1);
-        var CCGresponse = fullCCGinfo.response;
-        var curPlayingName = CCGresponse.data.stage.layer.layer_1.foreground.file.name;*/
-                
-        /*try {
-            var fullCinf = await ccgtunnel.cinf(pathToProbe);
-            console.log("Full CINF: " + fullCinf);
-            var duration = fullCinf.response.data;
-            console.log("CINF DURATION: " + duration);
-        } catch(e) {
-            console.log("CINF ERROR: " + e);
-        }*/
-        
-        ccgtunnel.cinf(pathToProbe).then(result => {
-            var duration = result.response.data.duration;
-            var framerate = result.response.data.fps;
-            framerate = framerate.replace("1/", "");
-            console.log("DEBUG: Duration of \"" + pathToProbe + "\" in seconds = " + duration / framerate);
+            });
         }).catch(error => {
             console.log("CINF ERROR " + error);
         });
-        
-        
-        //return("func asignDurationsToPly exited");
         
     } 
-}
-
-/*async function successfullCinfGetDurration(result) {
-    var toLog = result.response.data
-    console.log("DEBUG MASTER NOW: " + toLog);
-}
-
-async function failureFullCinf(error) {
-    console.log("ERROR: " + error);
-}*/
-
-
-/*iDontKnowWhatTheFuckAnymore(); // To be deleted, was used just for testing purposes
-async function iDontKnowWhatTheFuckAnymore() {
-    ccgtunnel.cinf("AMB").then(result => {
-            var duration = result.response.data.duration;
-            console.log("DEBUG NOW: " + JSON.stringify(duration));
-            //console.log("NOW WHAT?!");
-        }).catch(error => {
-            console.log("CINF ERROR " + error);
-        });
-}*/
-
-
-function getDurationFromMediaInfo(mediaInfoString, _callback) { // Not used?
-    mediaInfoArray = mediaInfoString.split(" ");
-    if (logLevel > 1) { console.log(mediaInfoArray); }
-    // 0 - status, 1 - OSCpath, 2 - statusVerbal, 3 - space, 4 - type (MOVIE), 5 - space,
-    // 6 - filesize, 7 - last modified, 8 - frame count, 9 - 1/framerate
-    var duration = (mediaInfoArray[8] * mediaInfoArray[9]); // Should get duration in seconds
-    return duration;
-    
-    _callback();
 }
 
 
@@ -326,6 +235,7 @@ function checkTime() {
                 currentlyPlaying = (playId - 1);
                 loadedNext = playId;
                 status = "playing";
+                startedPlayingAt = currentTime; // TODO Not used curently - for determining start times of next items
                 previousCCGinfo = ccgtunnel.info(1, 1);
             } else {
                 console.log("ERROR: Can't find path for item " + itemid);
@@ -333,17 +243,7 @@ function checkTime() {
         }
     }
     
-    //Check what is currently playing
-    /*if (status == "playing" && previousCCGinfo != false) {
-        if (logLevel > 1) { console.log("DEBUG: Checking currently playing"); }
-        var detectCurrentlyPlaying = getCurrentCCGinfo();
-        if (previousCCGinfo != detectCurrentlyPlaying) {
-            if (logLevel > 1) { console.log("DEBUG: Currently playing changed"); }
-            console.log(previousCCGinfo + detectCurrentlyPlaying);
-            currentlyPlaying += 1;
-            previousCCGinfo = detectCurrentlyPlaying;
-        }
-    }*/ // Move to func getCurrentCCGinfo
+    
     getCurrentCCGinfo()
     
     // TODO Automatic loadbg of next items
@@ -356,7 +256,8 @@ function checkTime() {
     
 }
 
-async function getCurrentCCGinfo(_callback) { // Check currently playing item and if not same as in previous check, LOADBG next
+// Check currently playing item and if not same as in previous check, LOADBG next
+async function getCurrentCCGinfo(_callback) { 
     delayInfo -= 1;
     if (status == "playing" && delayInfo < 1) {
         try {
