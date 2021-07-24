@@ -13,7 +13,7 @@ var status = "stoped";
 var currentlyPlaying = -1;
 var loadedNext = -1;
 var previousCCGinfo = false;
-var startedPlayingAt = 0;
+var nextStartTime = 0;
 
 var fixedEventsIds = [];
 var fixedEventsTimes = [];
@@ -130,7 +130,7 @@ function findPathFromPlyId(ply_id, _callback) {
         
 }
 
-loadPlaylist('playlist_template.json');
+setTimeout(function(){loadPlaylist('playlist_template.json')}, 1000);
 
 
 async function loadPlaylist(filename) {
@@ -182,11 +182,29 @@ async function asignDurationsToPly(plitem, index) {
             var duration = framecount / framerate;
             console.log("DEBUG: Duration of \"" + pathToProbe + "\" in seconds = " + duration);
             plitem.duration = duration;
+            if (index > 0) {
+                plitem.startTime = nextStartTime;
+                nextStartTime = playlist.PlaylistItems[index - 1].startTime + duration;
+            } else if (index == 0) {
+                plitem.startTime = currentTime;
+                nextStartTime = currentTime + duration;
+            } else {
+                console.log("ERROR: Invalid index given while asigning start times!");
+            }
             var plyWriteback = JSON.stringify(playlist);
                 fs.writeFile('playlist_template_aed.json', plyWriteback, (err) => {
                     if (err) throw err;
                     if ( logLevel > 1 ) { console.log('Data written to file'); }
             });
+            /*if (index > 1) {
+                nextStartTime = playlist.PlaylistItems[index - 1].startTime + duration;
+            } else if (index == 1) {
+                
+            } else if (index == 0) {
+                
+            } else {
+                console.log("ERROR: Invalid index given while asigning start times!");
+            }*/
         }).catch(error => {
             console.log("CINF ERROR " + error);
         });
@@ -248,10 +266,18 @@ function checkTime() {
     
     // TODO Automatic loadbg of next items
     if (loadedNext == currentlyPlaying && status == "playing") {
-        loadedNext += 1;
-        var loadNextPath = playlist.PlaylistItems[loadedNext].path;
-        ccgtunnel.loadbgAuto(1, 1, loadNextPath);
-        if (logLevel > 1) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
+        if (playlist.PlaylistItems.length > (loadedNext + 1)) {
+            loadedNext += 1;
+            var loadNextPath = playlist.PlaylistItems[loadedNext].path;
+            ccgtunnel.loadbgAuto(1, 1, loadNextPath);
+            if (logLevel > 1) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
+        } else {
+            loadedNext = 0;
+            var loadNextPath = playlist.PlaylistItems[loadedNext].path;
+            ccgtunnel.loadbgAuto(1, 1, "AMB");
+            status = "trouble";
+            console.log("ERROR: Reached end of playlist! Entering trouble state");
+        }
     }
     
 }
