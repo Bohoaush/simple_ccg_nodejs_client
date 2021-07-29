@@ -9,11 +9,20 @@ var currentTime = 0; // Variable for time in seconds since Jan 1st 1970
 
 var playlist;
 
+var webpageUItoDRAW;
+
 var status = "stoped";
 var currentlyPlaying = -1;
 var loadedNext = -1;
+var currentlyPlayingName = false; // Used only if posDetermMode 1 is used
+var currentlyPlayingDuration = false; // Only used if posDetermMode 1 is used
 var previousCCGinfo = false;
 var nextStartTime = 0;
+
+// How position is determined: (NOT IMPLEMENTED! (in developement))
+// 0 - Change of file in INFO - currently default, original system
+// 1 - What should be played is played (checked after time of duration, supported extensions: mxf, mp4, mpg, m2t);
+var posDetermMode = 1;
 
 var fixedEventsIds = [];
 var fixedEventsTimes = [];
@@ -32,12 +41,14 @@ var media_scanner_port = 8000;
 
 // Start http interface from file
 http.createServer(function (req, res) {
-    fs.readFile('ply_editor.html', function(err, data) {
+    /*fs.readFile('ply_editor.html', function(err, data) {
         res.writeHead(200, {'Content-Type': 'text/html'});
     res.write(data);
     return res.end();
 
-});
+});*/
+    res.write(webpageUItoDRAW);
+    return res.end();
     
     var parts = url.parse(req.url, true);
     var query = parts.query;
@@ -67,6 +78,8 @@ http.createServer(function (req, res) {
                 } else if (act == "stop") {
                     ccgtunnel.stop(1, 1);
                     status = "stopped";
+                } else if (act == "loadPly") {
+                    // TODO
                 } else {
                     console.log("ERROR: act parameter doesn't contain valid event");
                 }
@@ -132,7 +145,7 @@ function findPathFromPlyId(ply_id, _callback) {
 
 setTimeout(function(){loadPlaylist('playlist_template.json')}, 1000);
 
-
+//TODO Check if media are available
 async function loadPlaylist(filename) {
     
     //try {
@@ -212,6 +225,17 @@ async function asignDurationsToPly(plitem, index) {
     } 
 }
 
+setTimeout(function(){constructWebpageFromPlaylist()}, 5000);
+
+function constructWebpageFromPlaylist() {
+    webpageUItoDRAW = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>SICC | playlist editor</title><link rel=\"stylesheet\" href=\"uistyle.css\"></head><body>"; // TODO add controll buttons (play, stop, ...)
+    var forLoopRun = 0;
+    for (plitem of playlist.PlaylistItems) {
+        forLoopRun += 1;
+        webpageUItoDRAW += ("<div class=\"plyitem\" id=\"" + forLoopRun + "\">" + plitem.path + plitem.startTime + plitem.duration + "</div>");
+    }
+    webpageUItoDRAW += "</body>" // TODO add button scripts
+}
 
 
 setInterval(function(){checkTime()}, 1000);
@@ -249,6 +273,7 @@ function checkTime() {
             if (playPath != false) {
                 play(1, 1, playPath);
                 console.log("Started fixed event " + playPath);
+                currentlyPlayingName = playPath; // Only used for posDetermMode 1
                 fixedEventsAt += 1;
                 currentlyPlaying = (playId - 1);
                 loadedNext = playId;
@@ -261,15 +286,24 @@ function checkTime() {
         }
     }
     
+    // Redo to switch case
+    if (posDetermMode == 0) {
+        getCurrentCCGinfo();
+    } else if (posDetermMode == 1) {
+        getCurrentCCGinfoSecVer();
+    } else {
+        console.log("ERROR: Position determination mode is set to invalid value! Using default (0)");
+        posDetermMode = 0;
+    }
     
-    getCurrentCCGinfo()
-    
-    // TODO Automatic loadbg of next items
+    // TODO Needs implemetation of posDetermMode 1
     if (loadedNext == currentlyPlaying && status == "playing") {
         if (playlist.PlaylistItems.length > (loadedNext + 1)) {
             loadedNext += 1;
             var loadNextPath = playlist.PlaylistItems[loadedNext].path;
             ccgtunnel.loadbgAuto(1, 1, loadNextPath);
+            // currentlyPlayingName = playlist.PlaylistItems[currentlyPlaying].path; // Only used for posDetermMode 1
+            currentlyPlayingName = loadNextPath; // test for replacing the above
             if (logLevel > 1) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
         } else {
             loadedNext = 0;
@@ -282,7 +316,7 @@ function checkTime() {
     
 }
 
-// Check currently playing item and if not same as in previous check, LOADBG next
+// Check currently playing item and if not same as in previous check, LOADBG next (not really), isn't a callback anymore?
 async function getCurrentCCGinfo(_callback) { 
     delayInfo -= 1;
     if (status == "playing" && delayInfo < 1) {
@@ -296,6 +330,42 @@ async function getCurrentCCGinfo(_callback) {
                 currentlyPlaying += 1;
                 previousCCGinfo = curPlayingName;
             }
+        } catch(e) {
+            console.log("ERROR: " + e);
+        }
+    }
+    _callback
+}
+
+// Checks if correct clip is being played, in developement, could optionaly replace getCurrentCCGinfo, isn't callback?
+async function getCurrentCCGinfoSecVer(_callback) { 
+    delayInfo -= 1; // TODO Must be redone for duration based determination
+    
+    if (status == "playing" && delayInfo <= 0) {
+        try {
+            var fullCCGinfo = await ccgtunnel.info(1, 1); // TODO redo for new-style promisse based workflow (.then =>)
+            var CCGresponse = fullCCGinfo.response;
+            var curPlayingName = CCGresponse.data.stage.layer.layer_1.foreground.file.name;
+            console.log("DEBUG: Got currently playing info: " + curPlayingName);
+            try {
+                curPlayingName = curPlayingName.replace(".m2t","");
+            } catch {console.log("This is not .m2t");}
+            try {
+                curPlayingName = curPlayingName.replace(".mpg","");
+            } catch {console.log("This is not .mpg");}
+            try {
+                curPlayingName = curPlayingName.replace(".mp4","");
+            } catch {console.log("This is not .mp4");}
+            try {
+                curPlayingName = curPlayingName.replace(".mxf","");
+            } catch {console.log("This is not .mxf");}
+            
+            
+            if (currentlyPlayingName == curPlayingName) {
+                currentlyPlaying += 1;
+                delayInfo = playlist.PlaylistItems[currentlyPlaying].duration;
+                //currentlyPlayingName = playlist.PlaylistItems[currentlyPlaying].name;
+            } else { trouble(); }
         } catch(e) {
             console.log("ERROR: " + e);
         }
