@@ -11,13 +11,17 @@
     <input name="play_btn" id="play_btn" value="play" type="submit" />
     <input name="stop_btn" id="stop_btn" value="stop" type="submit" />
     <input name="ldply_btn" id="ldply_btn" value="Load playlist" type="submit" />
+    <input name="mvItemUp" id="mvItemUp" value="up" type="submit" />
+    <input name="mvItemDown" id="mvItemDown" value="down" type="submit" />
+    <input name="drawDebugInfo" id="drawDebugInfo" value="Draw debug info" type="submit" />
     
     <div id="debugView">
         <div>(de)bug view: </div>
     </div>
     
-    <div id="plyView">
+    <div id="plyViewWrapper">
         <div>Loaded playlist:</div>
+        <div id="plyView"></div>
     </div>
  </body>
  
@@ -39,24 +43,68 @@
             window.location.search = urlParams;
         });
         
+        var templitem1;
+        var templitem2;
+        
+        $('#mvItemUp').click(function(){
+            templitem1 = uiLdPly.PlaylistItems[selectedPlyitem - 1];
+            uiLdPly.PlaylistItems[selectedPlyitem - 1] = uiLdPly.PlaylistItems[selectedPlyitem];
+            uiLdPly.PlaylistItems[selectedPlyitem] = templitem1;
+            uiLdPly.PlaylistItems[selectedPlyitem].id -= -1; // += 1 would add it as string in ALL circumstances :/. JS I guess...
+            uiLdPly.PlaylistItems[selectedPlyitem - 1].id -= 1;
+            selectedPlyitem -= 1;
+            
+            DrawPlyInUI();
+        });
+        
+        $('#mvItemDown').click(function(){
+            templitem1 = uiLdPly.PlaylistItems[selectedPlyitem - -1];
+            uiLdPly.PlaylistItems[selectedPlyitem - -1] = uiLdPly.PlaylistItems[selectedPlyitem];
+            uiLdPly.PlaylistItems[selectedPlyitem] = templitem1;
+            uiLdPly.PlaylistItems[selectedPlyitem].id -= 1;
+            uiLdPly.PlaylistItems[selectedPlyitem - -1].id -= -1;
+            selectedPlyitem -= -1;
+            DrawPlyInUI();
+            //DrawDebug();
+        });
+        
+        $('#drawDebugInfo').click(function(){
+            DrawDebug();
+        });
+        
+        var selectedPlyitem = -1;
+        
+        
+        
         var uiLdPly
         
-        RecreatePlyInUI();
+        GetCurPly();
         
-        function RecreatePlyInUI() {
+        function GetCurPly() {
             var plyString = httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port +  "/playlist");
             setTimeout((document.getElementById("debugView").innerHTML += ("<div>" + plyString + "</div>")), 5000);
             uiLdPly = JSON.parse(plyString);
+            DrawPlyInUI();
+        }
             
+        function DrawPlyInUI() {
             var webpageUItoDRAW = "";
             var forLoopRun = -1;
             for (plitem of uiLdPly.PlaylistItems) {
                 forLoopRun += 1;
                 webpageUItoDRAW += ("<div class=\"plyitem\" id=\"" + forLoopRun + "\">" + plitem.id + " &nbsp&nbsp " + plitem.path + " &nbsp&nbsp " + plitem.startTime + " &nbsp&nbsp " + plitem.duration + "</div>");
             }
-            document.getElementById("plyView").innerHTML += webpageUItoDRAW;
+            document.getElementById("plyView").innerHTML = webpageUItoDRAW;
+            $(".plyitem").click(function(){
+                selectedPlyitem = this.id;
+                console.log("selected item: " + selectedPlyitem);
+            });
         }
         
+        function DrawDebug(){
+            var plyString = JSON.stringify(uiLdPly);
+            document.getElementById("debugView").innerHTML += ("<hr><div>" + plyString + "</div>");
+        }
         
         function httpGet(url) {
             var xmlHttp = new XMLHttpRequest();
