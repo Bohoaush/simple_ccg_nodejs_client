@@ -10,6 +10,15 @@
  <body>
     <input name="play_btn" id="play_btn" value="play" type="submit" />
     <input name="stop_btn" id="stop_btn" value="stop" type="submit" />
+    <input name="ldply_btn" id="ldply_btn" value="Load playlist" type="submit" />
+    
+    <div id="debugView">
+        <div>(de)bug view: </div>
+    </div>
+    
+    <div id="plyView">
+        <div>Loaded playlist:</div>
+    </div>
  </body>
  
     <script>
@@ -23,6 +32,38 @@
             urlParams.set('act', 'stop');
             window.location.search = urlParams;
         });
+        
+        $('#ldply_btn').click(function(){
+            var urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('act', 'loadPly');
+            window.location.search = urlParams;
+        });
+        
+        var uiLdPly
+        
+        RecreatePlyInUI();
+        
+        function RecreatePlyInUI() {
+            var plyString = httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port +  "/playlist");
+            setTimeout((document.getElementById("debugView").innerHTML += ("<div>" + plyString + "</div>")), 5000);
+            uiLdPly = JSON.parse(plyString);
+            
+            var webpageUItoDRAW = "";
+            var forLoopRun = -1;
+            for (plitem of uiLdPly.PlaylistItems) {
+                forLoopRun += 1;
+                webpageUItoDRAW += ("<div class=\"plyitem\" id=\"" + forLoopRun + "\">" + plitem.id + " &nbsp&nbsp " + plitem.path + " &nbsp&nbsp " + plitem.startTime + " &nbsp&nbsp " + plitem.duration + "</div>");
+            }
+            document.getElementById("plyView").innerHTML += webpageUItoDRAW;
+        }
+        
+        
+        function httpGet(url) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( "GET", url, false );
+            xmlHttp.send( null );
+            return xmlHttp.responseText;
+        }
     </script>
  
  </html>

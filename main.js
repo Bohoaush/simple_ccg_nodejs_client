@@ -40,65 +40,71 @@ var media_scanner_port = 8000;
 //--------------------------------------------------------------------------------------------
 
 // Start http interface from file
-http.createServer(function (req, res) {
-    /*fs.readFile('ply_editor.html', function(err, data) {
-        res.writeHead(200, {'Content-Type': 'text/html'});
-    res.write(data);
-    return res.end();
-
-});*/
-    res.write(webpageUItoDRAW);
-    return res.end();
+http.createServer(async function (req, res) {
+    if (req.url == "/playlist") {
+        res.write(JSON.stringify(playlist));
+        return res.end();
+    }
     
-    var parts = url.parse(req.url, true);
-    var query = parts.query;
-    if (logLevel > 1) {console.log("DEBUG: url parameters: " + JSON.stringify(query)); }
-    if (Object.keys(query).length != 0) {
-        if (logLevel > 1) {console.log("DEBUG: Processing parameters"); }
-        /*try {*/
-            var act = query["act"];
-            if (act != null && act != "") {
-                if (act == "play") {
-                    var itemid = query["item"];
-                    if (itemid != null && itemid != "" && itemid != undefined) {
-                        var playPath = findPathFromPlyId(itemid);
-                        console.log("AFTER RETURN: " + playPath);
-                        if (playPath != false) {
-                            play(1, 1, playPath);
+    else {
+        fs.readFile('ply_editor.html', function(err, data) {
+            res.writeHead(200, {'Content-Type': 'text/html'});
+            res.write(data);
+            return res.end();
+        });
+        /*res.write(webpageUItoDRAW);
+        return res.end();*/
+        
+        var parts = url.parse(req.url, true);
+        var query = parts.query;
+        if (logLevel > 1) {console.log("DEBUG: url parameters: " + JSON.stringify(query)); }
+        if (Object.keys(query).length != 0) {
+            if (logLevel > 1) {console.log("DEBUG: Processing parameters"); }
+            /*try {*/
+                var act = query["act"];
+                if (act != null && act != "") {
+                    if (act == "play") {
+                        var itemid = query["item"];
+                        if (itemid != null && itemid != "" && itemid != undefined) {
+                            var playPath = findPathFromPlyId(itemid);
+                            console.log("AFTER RETURN: " + playPath);
+                            if (playPath != false) {
+                                play(1, 1, playPath);
+                            } else {
+                                console.log("ERROR: Can't find path for item " + itemid);
+                            }
                         } else {
-                            console.log("ERROR: Can't find path for item " + itemid);
+                            console.log("ERROR: Play called, but no ID specified!");
                         }
+                    } else if (act == "pause") {
+                        
+                    } else if (act == "resume") {
+                        
+                    } else if (act == "stop") {
+                        ccgtunnel.stop(1, 1);
+                        status = "stopped";
+                    } else if (act == "loadPly") {
+                        // TODO
                     } else {
-                        console.log("ERROR: Play called, but no ID specified!");
+                        console.log("ERROR: act parameter doesn't contain valid event");
                     }
-                } else if (act == "pause") {
-                    
-                } else if (act == "resume") {
-                    
-                } else if (act == "stop") {
-                    ccgtunnel.stop(1, 1);
-                    status = "stopped";
-                } else if (act == "loadPly") {
-                    // TODO
+                    if (logLevel > 1) { console.log("DEBUG: Tried calling action: " + act); }
                 } else {
-                    console.log("ERROR: act parameter doesn't contain valid event");
+                    if (logLevel > 0) {console.log("WARNING: Required act parameter not given!"); }
                 }
-                if (logLevel > 1) { console.log("DEBUG: Tried calling action: " + act); }
-            } else {
+            /*} catch {
                 if (logLevel > 0) {console.log("WARNING: Required act parameter not given!"); }
-            }
-        /*} catch {
-            if (logLevel > 0) {console.log("WARNING: Required act parameter not given!"); }
-        }*/
-    }
-    
-    if (req.url == "/testdefault") {
-        trouble();
-    }
-    
-    if (req.url == "/test") {
-        ccgtunnel.play(1, 1);
-        status = "playing";
+            }*/
+        }
+        
+        if (req.url == "/testdefault") {
+            trouble();
+        }
+        
+        if (req.url == "/test") {
+            ccgtunnel.play(1, 1);
+            status = "playing";
+        }
     }
     
 }).listen(interface_port);
@@ -225,9 +231,10 @@ async function asignDurationsToPly(plitem, index) {
     } 
 }
 
-setTimeout(function(){constructWebpageFromPlaylist()}, 5000);
+//setTimeout(function(){constructWebpageFromPlaylist()}, 5000);
 
-function constructWebpageFromPlaylist() {
+//Would be huge step back. Done differently
+/*function constructWebpageFromPlaylist() {
     webpageUItoDRAW = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>SICC | playlist editor</title><link rel=\"stylesheet\" href=\"uistyle.css\"></head><body>"; // TODO add controll buttons (play, stop, ...)
     var forLoopRun = 0;
     for (plitem of playlist.PlaylistItems) {
@@ -235,7 +242,7 @@ function constructWebpageFromPlaylist() {
         webpageUItoDRAW += ("<div class=\"plyitem\" id=\"" + forLoopRun + "\">" + plitem.path + plitem.startTime + plitem.duration + "</div>");
     }
     webpageUItoDRAW += "</body>" // TODO add button scripts
-}
+}*/
 
 
 setInterval(function(){checkTime()}, 1000);
