@@ -44,9 +44,19 @@ http.createServer(async function (req, res) {
     if (req.url == "/playlist") {
         res.write(JSON.stringify(playlist));
         return res.end();
-    }
-    
-    else {
+    } else if (req.url == "/plysend") {
+        if (req.method == 'POST') {
+            var receiveModPly = "";
+            req.on('data', function(data) {
+                receiveModPly += data;
+            })
+            req.on('end', function() {
+                playlist = JSON.parse(receiveModPly);
+                playlist.PlaylistItems.forEach(asignDurationsToPly);
+                res.end();
+            });
+        }
+    } else {
         fs.readFile('ply_editor.html', function(err, data) {
             res.writeHead(200, {'Content-Type': 'text/html'});
             res.write(data);

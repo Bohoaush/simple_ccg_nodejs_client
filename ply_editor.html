@@ -5,7 +5,19 @@
     <title>Playlist editor | nodecg CCG client</title>
     
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    
+    <style>
+        .plyitem
+        {
+            color: white;
+            background-color: #222222;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        .odd
+        {
+            background-color: #333333;
+        }
+    </style>
  </head>
  <body>
     <input name="play_btn" id="play_btn" value="play" type="submit" />
@@ -13,6 +25,7 @@
     <input name="ldply_btn" id="ldply_btn" value="Load playlist" type="submit" />
     <input name="mvItemUp" id="mvItemUp" value="up" type="submit" />
     <input name="mvItemDown" id="mvItemDown" value="down" type="submit" />
+    <input name="syncPly" id="syncPly" value="Upload playlist" type="submit" />
     <input name="drawDebugInfo" id="drawDebugInfo" value="Draw debug info" type="submit" />
     
     <div id="debugView">
@@ -68,6 +81,10 @@
             //DrawDebug();
         });
         
+        $('#syncPly').click(function(){
+            UploadPlaylist();
+        });
+        
         $('#drawDebugInfo').click(function(){
             DrawDebug();
         });
@@ -92,7 +109,13 @@
             var forLoopRun = -1;
             for (plitem of uiLdPly.PlaylistItems) {
                 forLoopRun += 1;
-                webpageUItoDRAW += ("<div class=\"plyitem\" id=\"" + forLoopRun + "\">" + plitem.id + " &nbsp&nbsp " + plitem.path + " &nbsp&nbsp " + plitem.startTime + " &nbsp&nbsp " + plitem.duration + "</div>");
+                webpageUItoDRAW += ("<div class=\"plyitem")
+                
+                if (forLoopRun%2 == 0) {
+                    webpageUItoDRAW += " odd"
+                }
+                
+                webpageUItoDRAW += ("\" id=\"" + forLoopRun + "\">" + plitem.id + " &nbsp&nbsp " + plitem.path + " &nbsp&nbsp " + plitem.startTime + " &nbsp&nbsp " + plitem.duration + "</div>"); //current limitation - won't work with ports 80 or 443
             }
             document.getElementById("plyView").innerHTML = webpageUItoDRAW;
             $(".plyitem").click(function(){
@@ -101,16 +124,28 @@
             });
         }
         
+        function UploadPlaylist(){
+            var plySend = JSON.stringify(uiLdPly);
+            httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/plysend", plySend);
+        }
+        
         function DrawDebug(){
             var plyString = JSON.stringify(uiLdPly);
             document.getElementById("debugView").innerHTML += ("<hr><div>" + plyString + "</div>");
         }
+        
         
         function httpGet(url) {
             var xmlHttp = new XMLHttpRequest();
             xmlHttp.open( "GET", url, false );
             xmlHttp.send( null );
             return xmlHttp.responseText;
+        }
+        
+        function httpPost(url, data) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("POST", url, true);
+            xmlHttp.send(data);
         }
     </script>
  
