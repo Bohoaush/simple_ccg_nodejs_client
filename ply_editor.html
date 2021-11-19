@@ -6,6 +6,12 @@
     
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <style>
+        body
+        {
+            font-family: Ubuntu;
+            color: white;
+            background-color: #171717;
+        }
         .plyitem
         {
             color: white;
@@ -27,7 +33,11 @@
     <input name="mvItemDown" id="mvItemDown" value="down" type="submit" />
     <input name="syncPly" id="syncPly" value="Upload playlist" type="submit" />
     <input name="drawDebugInfo" id="drawDebugInfo" value="Draw debug info" type="submit" />
-    
+    <input name="tgglEdit" id="tgglEdit" value="Toggle edit" type="submit" />
+    <div id="inspectorWrapper">
+        <!--<div>Edit item:</div>-->
+        <div id="inspector"></div>
+    </div>
     <div id="debugView">
         <div>(de)bug view: </div>
     </div>
@@ -57,7 +67,7 @@
         });
         
         var templitem1;
-        var templitem2;
+        //var templitem2;
         
         $('#mvItemUp').click(function(){
             templitem1 = uiLdPly.PlaylistItems[selectedPlyitem - 1];
@@ -66,6 +76,7 @@
             uiLdPly.PlaylistItems[selectedPlyitem].id -= -1; // += 1 would add it as string in ALL circumstances :/. JS I guess...
             uiLdPly.PlaylistItems[selectedPlyitem - 1].id -= 1;
             selectedPlyitem -= 1;
+            UpdateInspector();
             
             DrawPlyInUI();
         });
@@ -77,6 +88,7 @@
             uiLdPly.PlaylistItems[selectedPlyitem].id -= 1;
             uiLdPly.PlaylistItems[selectedPlyitem - -1].id -= -1;
             selectedPlyitem -= -1;
+            UpdateInspector();
             DrawPlyInUI();
             //DrawDebug();
         });
@@ -87,6 +99,10 @@
         
         $('#drawDebugInfo').click(function(){
             DrawDebug();
+        });
+        
+        $('#tgglEdit').click(function(){
+            ToggleInspector();
         });
         
         var selectedPlyitem = -1;
@@ -121,6 +137,7 @@
             $(".plyitem").click(function(){
                 selectedPlyitem = this.id;
                 console.log("selected item: " + selectedPlyitem);
+                UpdateInspector();
             });
         }
         
@@ -132,6 +149,37 @@
         function DrawDebug(){
             var plyString = JSON.stringify(uiLdPly);
             document.getElementById("debugView").innerHTML += ("<hr><div>" + plyString + "</div>");
+        }
+        
+        var inspectorDisplayed = false;
+        function ToggleInspector(){
+            if (inspectorDisplayed == false) {
+                inspectorDisplayed = true;
+                UpdateInspector();
+            } else {
+                inspectorDisplayed = false;
+                document.getElementById("inspector").innerHTML = "";
+            }
+        }
+        
+        function UpdateInspector(){
+            if (inspectorDisplayed == true){
+                var insItStartMode = uiLdPly.PlaylistItems[selectedPlyitem].startMode;
+                if (insItStartMode == "fixed") {insItStartMode = "checked";
+                } else {
+                    insItStartMode = "";
+                }
+                document.getElementById("inspector").innerHTML = ("editing item " + selectedPlyitem + "<br>" + "<input type=\"checkbox\"  id=\"fixedCheckbox\"" + insItStartMode + ">fixed event <input name=\"insSave\" id=\"insSave\" value=\"Save\" type=\"submit\">");
+                $("#insSave").click(function(){
+                    
+                    if (document.getElementById("fixedCheckbox").checked != true) {
+                        insItStartMode = "auto";
+                    } else {
+                        insItStartMode = "fixed";
+                    }
+                    uiLdPly.PlaylistItems[selectedPlyitem].startMode = insItStartMode;
+                });
+            }
         }
         
         
