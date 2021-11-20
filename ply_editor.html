@@ -23,6 +23,10 @@
         {
             background-color: #333333;
         }
+        .selected
+        {
+            color: lime;
+        }
     </style>
  </head>
  <body>
@@ -131,14 +135,22 @@
                     webpageUItoDRAW += " odd"
                 }
                 
-                webpageUItoDRAW += ("\" id=\"" + forLoopRun + "\">" + plitem.id + " &nbsp&nbsp " + plitem.path + " &nbsp&nbsp " + plitem.startTime + " &nbsp&nbsp " + plitem.duration + "</div>"); //current limitation - won't work with ports 80 or 443
+                var startTimeUTCms = new Date(plitem.startTime * 1000);
+                var startTimeString = startTimeUTCms.getDate() + "." + (startTimeUTCms.getMonth() + 1) + "." + startTimeUTCms.getFullYear() + " " + startTimeUTCms.getHours() + ":" + startTimeUTCms.getMinutes() + ":" + startTimeUTCms.getSeconds();
+                
+                webpageUItoDRAW += ("\" id=\"" + forLoopRun + "\">" + plitem.id + " &nbsp&nbsp " + plitem.path + " &nbsp&nbsp " + startTimeString + " &nbsp&nbsp " + plitem.duration + "</div>"); //current limitation - won't work with ports 80 or 443
             }
             document.getElementById("plyView").innerHTML = webpageUItoDRAW;
             $(".plyitem").click(function(){
+                if (selectedPlyitem != -1) { document.getElementById(selectedPlyitem).classList.remove("selected"); }
                 selectedPlyitem = this.id;
-                console.log("selected item: " + selectedPlyitem);
+                document.getElementById(selectedPlyitem).classList.add("selected");
+                //console.log("selected item: " + selectedPlyitem);
                 UpdateInspector();
             });
+            if (selectedPlyitem != -1) {
+                document.getElementById(selectedPlyitem).classList.add("selected");
+            }
         }
         
         function UploadPlaylist(){
@@ -169,13 +181,28 @@
                 } else {
                     insItStartMode = "";
                 }
-                document.getElementById("inspector").innerHTML = ("editing item " + selectedPlyitem + "<br>" + "<input type=\"checkbox\"  id=\"fixedCheckbox\"" + insItStartMode + ">fixed event <input name=\"insSave\" id=\"insSave\" value=\"Save\" type=\"submit\">");
+                var insItStartTime = new Date(uiLdPly.PlaylistItems[selectedPlyitem].startTime * 1000);
+                var insItStartYear = insItStartTime.getFullYear();
+                var insItStartMonth = (insItStartTime.getMonth() + 1);
+                if (insItStartMonth < 10) {insItStartMonth = "0" + insItStartMonth;}
+                var insItStartDay = insItStartTime.getDate();
+                if (insItStartDay < 10) {insItStartDay = "0" + insItStartDay;}
+                var insItStartHour = insItStartTime.getHours();
+                if (insItStartHour < 10) {insItStartHour = "0" + insItStartHour;}
+                var insItStartMinute = insItStartTime.getMinutes();
+                if (insItStartMinute < 10) {insItStartMinute = "0" + insItStartMinute;}
+                var insItStartSecond = insItStartTime.getSeconds();
+                if (insItStartSecond < 10) {insItStartSecond = "0" + insItStartSecond;}
+                var insItStartTimeString = insItStartYear.toString() + insItStartMonth.toString() + insItStartDay.toString() + insItStartHour.toString() + insItStartMinute.toString() + insItStartSecond.toString();
+                
+                document.getElementById("inspector").innerHTML = ("editing item " + selectedPlyitem + "<br>" + "<input type=\"checkbox\"  id=\"fixedCheckbox\"" + insItStartMode + ">fixed event &nbsp <input id=\"insStTimeTF\" value=\"" + insItStartTimeString + "\"> <input name=\"insSave\" id=\"insSave\" value=\"Save\" type=\"submit\">");
                 $("#insSave").click(function(){
                     
                     if (document.getElementById("fixedCheckbox").checked != true) {
                         insItStartMode = "auto";
                     } else {
                         insItStartMode = "fixed";
+                        uiLdPly.PlaylistItems[selectedPlyitem].startTime = document.getElementById("insStTimeTF").value;
                     }
                     uiLdPly.PlaylistItems[selectedPlyitem].startMode = insItStartMode;
                 });
