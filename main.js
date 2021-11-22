@@ -149,9 +149,12 @@ function play(channel, layer, itemname) {
 }
 
 function trouble() { // Will eventually be used as item to play, if something goes wrong
+    troubleCountRemaining -= 1;
+    console.log("trouble count: " + (allowedTroubleCount - troubleCountRemaining) + " remaining: " + troubleCountRemaining);
     if (troubleCountRemaining < 1) {
         ccgtunnel.loadbgAuto(1, 1, "AMB", true);
         status = "trouble";
+        loadedNext = -1;
         console.log("TROUBLE!");
         troubleCountRemaining = allowedTroubleCount;
     }
@@ -336,8 +339,9 @@ function checkTime() {
             currentlyPlayingName = loadNextPath; // test for replacing the above
             if (logLevel > 1) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
         } else {
-            loadedNext = -1;
+            /*loadedNext = -1;*/
             /*var loadNextPath = playlist.PlaylistItems[loadedNext].path;*/
+            /*troubleCountRemaining -= allowedTroubleCount;*/
             trouble();
             /*ccgtunnel.loadbgAuto(1, 1, "AMB");
             status = "trouble";
@@ -370,8 +374,7 @@ async function getCurrentCCGinfo(_callback) {
 
 // Checks if correct clip is being played, in developement, could optionaly replace getCurrentCCGinfo, isn't callback?
 async function getCurrentCCGinfoSecVer(_callback) { 
-    delayInfo -= 1; // TODO Must be redone for duration based determination
-    console.log("Dealy info: " + delayInfo);
+    delayInfo -= 1;
     
     if (status == "playing" && delayInfo <= 0) {
         try {
@@ -393,7 +396,7 @@ async function getCurrentCCGinfoSecVer(_callback) {
             } catch {console.log("This is not .mxf");}
             
             
-            if (currentlyPlayingName == curPlayingName && currentlyPlaying < (playlist.PlaylistItems.length)) {
+            if (currentlyPlayingName == curPlayingName) {
                 currentlyPlaying += 1;
                 delayInfo = playlist.PlaylistItems[currentlyPlaying].duration;
                 //currentlyPlayingName = playlist.PlaylistItems[currentlyPlaying].name;
