@@ -56,6 +56,11 @@ http.createServer(async function (req, res) {
                 res.end();
             });
         }
+    } else if (req.url == "/exploreClips") {
+        var returnCinf = await ccgtunnel.cls();
+        console.log(JSON.stringify(returnCinf.response.data));
+        res.write(JSON.stringify(returnCinf.response.data));
+        res.end();
     } else {
         fs.readFile('ply_editor.html', function(err, data) {
             res.writeHead(200, {'Content-Type': 'text/html'});
@@ -323,8 +328,8 @@ function checkTime() {
             currentlyPlayingName = loadNextPath; // test for replacing the above
             if (logLevel > 1) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
         } else {
-            loadedNext = 0;
-            var loadNextPath = playlist.PlaylistItems[loadedNext].path;
+            loadedNext = -1;
+            /*var loadNextPath = playlist.PlaylistItems[loadedNext].path;*/
             ccgtunnel.loadbgAuto(1, 1, "AMB");
             status = "trouble";
             console.log("ERROR: Reached end of playlist! Entering trouble state");
@@ -382,7 +387,7 @@ async function getCurrentCCGinfoSecVer(_callback) {
                 currentlyPlaying += 1;
                 delayInfo = playlist.PlaylistItems[currentlyPlaying].duration;
                 //currentlyPlayingName = playlist.PlaylistItems[currentlyPlaying].name;
-            } else { trouble(); }
+            } else { console.log("used to be trouble"); }
         } catch(e) {
             console.log("ERROR: " + e);
         }

@@ -12,6 +12,11 @@
             color: white;
             background-color: #171717;
         }
+        .avClipList
+        {
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
         .plyitem
         {
             color: white;
@@ -27,6 +32,10 @@
         {
             color: lime;
         }
+        .selectedAdd
+        {
+            color: lightblue;
+        }
     </style>
  </head>
  <body>
@@ -38,8 +47,11 @@
     <input name="syncPly" id="syncPly" value="Upload playlist" type="submit" />
     <input name="drawDebugInfo" id="drawDebugInfo" value="Draw debug info" type="submit" />
     <input name="tgglEdit" id="tgglEdit" value="Toggle edit" type="submit" />
+    <input id="tgglAddItem" value="Toggle add clip" type="submit" />
+    <div id="addClipMenuWrapper">
+        <div id="addClipMenu"></div>
+    </div>
     <div id="inspectorWrapper">
-        <!--<div>Edit item:</div>-->
         <div id="inspector"></div>
     </div>
     <div id="debugView">
@@ -65,9 +77,10 @@
         });
         
         $('#ldply_btn').click(function(){
-            var urlParams = new URLSearchParams(window.location.search);
+            /*var urlParams = new URLSearchParams(window.location.search);
             urlParams.set('act', 'loadPly');
-            window.location.search = urlParams;
+            window.location.search = urlParams;*/
+            GetCurPly();
         });
         
         var templitem1;
@@ -109,8 +122,12 @@
             ToggleInspector();
         });
         
-        var selectedPlyitem = -1;
+        $('#tgglAddItem').click(function(){
+            ToggleAddClip();
+        });
         
+        var selectedPlyitem = -1;
+        var selectedAddItem = -1;
         
         
         var uiLdPly
@@ -119,7 +136,7 @@
         
         function GetCurPly() {
             var plyString = httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port +  "/playlist");
-            setTimeout((document.getElementById("debugView").innerHTML += ("<div>" + plyString + "</div>")), 5000);
+            /*setTimeout((document.getElementById("debugView").innerHTML += ("<div>" + plyString + "</div>")), 5000);*/
             uiLdPly = JSON.parse(plyString);
             DrawPlyInUI();
         }
@@ -156,6 +173,7 @@
         function UploadPlaylist(){
             var plySend = JSON.stringify(uiLdPly);
             httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/plysend", plySend);
+            GetCurPly();
         }
         
         function DrawDebug(){
@@ -207,6 +225,54 @@
                     uiLdPly.PlaylistItems[selectedPlyitem].startMode = insItStartMode;
                 });
             }
+        }
+        
+        var addClipDisplayed = false;
+        function ToggleAddClip(){
+            if (addClipDisplayed == false) {
+                addClipDisplayed = true;
+                DrawAddClipMenu();
+            } else {
+                addClipDisplayed = false;
+                document.getElementById("addClipMenu").innerHTML = "";
+            }
+        }
+        
+        function DrawAddClipMenu() {
+            var drawClipsInspector = "Add clip to playlist:";
+            var availableClips = JSON.parse(httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/exploreClips"));
+            var forLoopRun = 0;
+            for (clip in availableClips) {
+                forLoopRun += 1;
+                console.log(clip);
+                drawClipsInspector += ("<div id=\"n" + clip + "\" class=\"avClipList");
+                
+                if ((forLoopRun % 2) == 0) {
+                    drawClipsInspector += " odd"
+                }
+                
+                drawClipsInspector += ("\">path: " + availableClips[clip].name + "&nbsp&nbspduration: " + availableClips[clip].duration + "s</div>");
+            }
+            drawClipsInspector += "<input id=\"addClipBtn\" value=\"Add selected clip\" type=\"submit\">"
+            document.getElementById("addClipMenu").innerHTML = drawClipsInspector;
+            $(".avClipList").click(function(){
+                if (selectedAddItem != -1) { document.getElementById(selectedAddItem).classList.remove("selectedAdd"); }
+                selectedAddItem = this.id;
+                document.getElementById(selectedAddItem).classList.add("selectedAdd");
+            });
+            $("#addClipBtn").click(function(){
+                console.log("Add clip clicked");
+                if (selectedAddItem != -1) {
+                    const itemToAdd = {id:"",type:"clip",path:"",startMode:"",startTime:"",endAt:"",duration:""};
+                    itemToAdd.id = uiLdPly.PlaylistItems.length;
+                    itemToAdd.path = availableClips[selectedAddItem.replace("n", "")].name;
+                    itemToAdd.startMode = "auto";
+                    uiLdPly.PlaylistItems.push(itemToAdd);
+                    DrawPlyInUI();
+                } else {
+                    console.log("You cannot add NO item!");
+                }
+            });
         }
         
         
