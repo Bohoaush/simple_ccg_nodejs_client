@@ -171,9 +171,14 @@
         }
         
         function UploadPlaylist(){
+            var forUplPlitRun = 0;
+            for (plitem in uiLdPly.PlaylistItems) {
+                uiLdPly.PlaylistItems[forUplPlitRun].id = forUplPlitRun;
+                forUplPlitRun += 1;
+            }
             var plySend = JSON.stringify(uiLdPly);
             httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/plysend", plySend);
-            GetCurPly();
+            setTimeout(function(){GetCurPly()},2000);
         }
         
         function DrawDebug(){
@@ -213,7 +218,7 @@
                 if (insItStartSecond < 10) {insItStartSecond = "0" + insItStartSecond;}
                 var insItStartTimeString = insItStartYear.toString() + insItStartMonth.toString() + insItStartDay.toString() + insItStartHour.toString() + insItStartMinute.toString() + insItStartSecond.toString();
                 
-                document.getElementById("inspector").innerHTML = ("editing item " + selectedPlyitem + "<br>" + "<input type=\"checkbox\"  id=\"fixedCheckbox\"" + insItStartMode + ">fixed event &nbsp <input id=\"insStTimeTF\" value=\"" + insItStartTimeString + "\"> <input name=\"insSave\" id=\"insSave\" value=\"Save\" type=\"submit\">");
+                document.getElementById("inspector").innerHTML = ("editing item " + selectedPlyitem + "<br>" + "<input type=\"checkbox\"  id=\"fixedCheckbox\"" + insItStartMode + ">fixed event &nbsp <input id=\"insStTimeTF\" value=\"" + insItStartTimeString + "\"> <input name=\"insSave\" id=\"insSave\" value=\"Save\" type=\"submit\"><input id=\"insRemove\" value=\"Remove clip from playlist\" type=\"submit\">");
                 $("#insSave").click(function(){
                     
                     if (document.getElementById("fixedCheckbox").checked != true) {
@@ -223,6 +228,11 @@
                         uiLdPly.PlaylistItems[selectedPlyitem].startTime = document.getElementById("insStTimeTF").value;
                     }
                     uiLdPly.PlaylistItems[selectedPlyitem].startMode = insItStartMode;
+                });
+                $("#insRemove").click(function(){
+                    delete uiLdPly.PlaylistItems[selectedPlyitem];
+                    uiLdPly.PlaylistItems = uiLdPly.PlaylistItems.filter(aplit => aplit !== null);
+                    console.log(JSON.stringify(uiLdPly));
                 });
             }
         }

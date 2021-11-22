@@ -31,6 +31,9 @@ var fixedEventsAt = 0;
 var delayInfoDefault = 3;
 var delayInfo = delayInfoDefault;
 
+var allowedTroubleCount = 3;
+var troubleCountRemaining = allowedTroubleCount;
+
 //------------------------------User changeable variables-------------------------------------
 var logLevel = 2; // Set console log level: 0 - error, 1 - warning, 2 - debug, 3 - show time updates too
 var ccg_ip = "127.0.0.1"; // Set CasparCG server Ip address
@@ -146,8 +149,12 @@ function play(channel, layer, itemname) {
 }
 
 function trouble() { // Will eventually be used as item to play, if something goes wrong
-    ccgtunnel.play(1, 1, "AMB");
-    status = "trouble";
+    if (troubleCountRemaining < 1) {
+        ccgtunnel.loadbgAuto(1, 1, "AMB", true);
+        status = "trouble";
+        console.log("TROUBLE!");
+        troubleCountRemaining = allowedTroubleCount;
+    }
 }
 
 function findPathFromPlyId(ply_id, _callback) {
@@ -302,6 +309,7 @@ function checkTime() {
                 status = "playing";
                 startedPlayingAt = currentTime; // TODO Not used curently - for determining start times of next items
                 previousCCGinfo = ccgtunnel.info(1, 1);
+                delayInfo = 1;
             } else {
                 console.log("ERROR: Can't find path for item " + itemid);
             }
@@ -330,9 +338,10 @@ function checkTime() {
         } else {
             loadedNext = -1;
             /*var loadNextPath = playlist.PlaylistItems[loadedNext].path;*/
-            ccgtunnel.loadbgAuto(1, 1, "AMB");
+            trouble();
+            /*ccgtunnel.loadbgAuto(1, 1, "AMB");
             status = "trouble";
-            console.log("ERROR: Reached end of playlist! Entering trouble state");
+            console.log("ERROR: Reached end of playlist! Entering trouble state");*/
         }
     }
     
@@ -362,6 +371,7 @@ async function getCurrentCCGinfo(_callback) {
 // Checks if correct clip is being played, in developement, could optionaly replace getCurrentCCGinfo, isn't callback?
 async function getCurrentCCGinfoSecVer(_callback) { 
     delayInfo -= 1; // TODO Must be redone for duration based determination
+    console.log("Dealy info: " + delayInfo);
     
     if (status == "playing" && delayInfo <= 0) {
         try {
@@ -383,11 +393,11 @@ async function getCurrentCCGinfoSecVer(_callback) {
             } catch {console.log("This is not .mxf");}
             
             
-            if (currentlyPlayingName == curPlayingName) {
+            if (currentlyPlayingName == curPlayingName && currentlyPlaying < (playlist.PlaylistItems.length)) {
                 currentlyPlaying += 1;
                 delayInfo = playlist.PlaylistItems[currentlyPlaying].duration;
                 //currentlyPlayingName = playlist.PlaylistItems[currentlyPlaying].name;
-            } else { console.log("used to be trouble"); }
+            } else { trouble(); }
         } catch(e) {
             console.log("ERROR: " + e);
         }
