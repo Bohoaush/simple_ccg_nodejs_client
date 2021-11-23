@@ -14,8 +14,8 @@
         }
         .avClipList
         {
-            padding-top: 10px;
-            padding-bottom: 10px;
+            padding-top: 7px;
+            padding-bottom: 7px;
         }
         .plyitem
         {
@@ -34,7 +34,16 @@
         }
         .selectedAdd
         {
-            color: lightblue;
+            color: aqua;
+        }
+        .playingItemVi
+        {
+            background-color: green;
+        }
+        
+        #statusView
+        {
+            font-size: 150%;
         }
     </style>
  </head>
@@ -48,6 +57,9 @@
     <input name="drawDebugInfo" id="drawDebugInfo" value="Draw debug info" type="submit" />
     <input name="tgglEdit" id="tgglEdit" value="Toggle edit" type="submit" />
     <input id="tgglAddItem" value="Toggle add clip" type="submit" />
+    <div id="statusViewWrapper">
+        <div id="statusView"></div>
+    </div>
     <div id="addClipMenuWrapper">
         <div id="addClipMenu"></div>
     </div>
@@ -128,7 +140,8 @@
         
         var selectedPlyitem = -1;
         var selectedAddItem = -1;
-        
+        const melStat = {state:"N/A",playId:"N/A",playPth:"N/A"}
+        var previousPlaId = -1;
         
         var uiLdPly
         
@@ -188,7 +201,7 @@
         
         var inspectorDisplayed = false;
         function ToggleInspector(){
-            if (inspectorDisplayed == false) {
+            if (inspectorDisplayed == false && selectedPlyitem != -1) {
                 inspectorDisplayed = true;
                 UpdateInspector();
             } else {
@@ -283,6 +296,31 @@
                     console.log("You cannot add NO item!");
                 }
             });
+        }
+        
+        
+        setInterval(GetCurrentStatus, 5000);
+        
+        function GetCurrentStatus() {
+            melstat = JSON.parse(httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/getStatus"));
+            document.getElementById("statusView").innerHTML = melstat.state + ": " + melstat.playId + " " + melstat.playPth;
+            switch (melstat.state) {
+                case "playing":
+                    document.getElementById("statusView").style.color = "lime";
+                    break;
+                case "stopped":
+                    document.getElementById("statusView").style.color = "blue";
+                    break;
+                case "trouble":
+                    document.getElementById("statusView").style.color = "red";
+            }
+            if (previousPlaId != melstat.state) {
+                if (previousPlaId != -1) {
+                    document.getElementById(previousPlaId).classList.remove("playingItemVi");
+                }
+                document.getElementById(melstat.playId).classList.add("playingItemVi");
+                previousPlaId = melstat.playId;
+            }
         }
         
         

@@ -44,7 +44,7 @@ var media_scanner_port = 8000;
 
 // Start http interface from file
 http.createServer(async function (req, res) {
-    if (req.url == "/playlist") {
+    if (req.url == "/playlist") { //TODO redo with switch cases
         res.write(JSON.stringify(playlist));
         return res.end();
     } else if (req.url == "/plysend") {
@@ -63,6 +63,10 @@ http.createServer(async function (req, res) {
         var returnCinf = await ccgtunnel.cls();
         console.log(JSON.stringify(returnCinf.response.data));
         res.write(JSON.stringify(returnCinf.response.data));
+        res.end();
+    } else if (req.url == "/getStatus") {
+        const returnStatus = {state:status,playId:currentlyPlaying,playPth:playlist.PlaylistItems[currentlyPlaying].path};
+        res.write(JSON.stringify(returnStatus));
         res.end();
     } else {
         fs.readFile('ply_editor.html', function(err, data) {
