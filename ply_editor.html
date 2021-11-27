@@ -150,6 +150,7 @@
             uiLdPly.PlaylistItems = [];
             DrawPlyInUI();
             document.getElementById("statusView").innerHTML = "";
+            selectedPlyitem = -1;
         });
         
         var plyMenuDisplayed = false;
@@ -343,6 +344,7 @@
                 if (svPlyFilename != "") {
                     httpPost((currentUrl + "/pushPlaylist"), JSON.stringify(pushPlyWithParams));
                 }
+                DrawPlaylistMenu();
             });
         }
         

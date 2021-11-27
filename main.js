@@ -34,6 +34,9 @@ var delayInfo = delayInfoDefault;
 var allowedTroubleCount = 3;
 var troubleCountRemaining = allowedTroubleCount;
 
+var dailyPlaylistsFilenames;
+var currentlyLoadedPlaylistFilename;
+
 //------------------------------User changeable variables-------------------------------------
 var logLevel = 2; // Set console log level: 0 - error, 1 - warning, 2 - debug, 3 - show time updates too
 var ccg_ip = "127.0.0.1"; // Set CasparCG server Ip address
@@ -87,6 +90,7 @@ http.createServer(async function (req, res) {
             fs.writeFile((pushPlySubfolder + receivedPushPlyObj.svPlyFilename), JSON.stringify(receivedPushPlyObj.uiLdPly), function(err) {
                 if (err) throw err;
                 console.log("New playlist saved");
+                FindDailyPlaylists();
             });
         });
     } else if (req.url == "/avaPlys") {
@@ -221,11 +225,21 @@ function findPathFromPlyId(ply_id, _callback) {
         
 }
 
-setTimeout(function(){loadPlaylist('playlist_template.json')}, 1000);
+//setTimeout(function(){loadPlaylist('playlist_template.json')}, 1000);
+FindDailyPlaylists();
+
+function FindDailyPlaylists() {
+    dailyPlaylistsFilenames = [];
+    fs.readdir("daily_playlists", (err, filenames) => {
+        for (filename of filenames) {
+            dailyPlaylistsFilenames.push(filename);
+        }
+    });
+}
 
 //TODO Check if media are available
 async function loadPlaylist(filename) {
-    
+    currentlyLoadedPlaylistFilename = filename;
     //try {
     fs.readFile(filename, function(err, data) {
         if (playlist != null) { var temporaryOldPlaylist = playlist; }
@@ -396,6 +410,8 @@ function checkTime() {
         }
     }
     
+    CheckDailyPlaylists();
+    
 }
 
 // Check currently playing item and if not same as in previous check, LOADBG next (not really), isn't a callback anymore?
@@ -454,3 +470,24 @@ async function getCurrentCCGinfoSecVer(_callback) {
     }
     _callback
 }
+
+function CheckDailyPlaylists() {
+    var allDaiPlys = [];
+    var testDaiPlys = [];
+    var checkDaiplyForRun = -1;
+    for (daiply of dailyPlaylistsFilenames) {
+        checkDaiplyForRun += 1;
+        allDaiPlys[checkDaiplyForRun] = daiply.replace(".json","");
+        if (allDaiPlys[checkDaiplyForRun] < currentTimeHR) {
+            testDaiPlys.push(allDaiPlys[checkDaiplyForRun]);
+        }
+    }
+    var dailyPlyForPotentialLoad = ("daily_playlists/" + (Math.max(...testDaiPlys)) + ".json");
+    if (dailyPlyForPotentialLoad != currentlyLoadedPlaylistFilename) {
+        console.log(dailyPlyForPotentialLoad);
+        loadPlaylist(dailyPlyForPotentialLoad);
+    }
+    
+    
+}
+
