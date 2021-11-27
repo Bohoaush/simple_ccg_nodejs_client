@@ -65,9 +65,52 @@ http.createServer(async function (req, res) {
         res.write(JSON.stringify(returnCinf.response.data));
         res.end();
     } else if (req.url == "/getStatus") {
-        const returnStatus = {state:status,playId:currentlyPlaying,playPth:playlist.PlaylistItems[currentlyPlaying].path};
-        res.write(JSON.stringify(returnStatus));
-        res.end();
+        if (currentlyPlaying != -1) {
+            const returnStatus = {state:status,playId:currentlyPlaying,playPth:playlist.PlaylistItems[currentlyPlaying].path};
+            res.write(JSON.stringify(returnStatus));
+            res.end();
+        }
+    } else if (req.url == "/pushPlaylist") {
+        var receivedNewPly = "";
+        var decoParams = (url.parse(req.url, true)).query;
+        req.on('data', function(data) {
+            receivedNewPly += data;
+        });
+        req.on('end', function() {
+            if (decoParams["daily"] != null) {
+                fs.writeFile(("daily_playlists/" + decoParams["daily"] + ".json"), receivedNewPly, function(err) {
+                    if (err) throw err;
+                    console.log("New daily playlist saved");
+                });
+            } else if (decoParams["filename"] != null) {
+                fs.writeFile(("playlists/" + decoParams["filename"] + ".json"), receivedNewPly, function(err) {
+                    if (err) throw err;
+                    console.log("New playlist saved");
+                });
+            }
+        });
+    } else if (req.url == "/avaPlys") {
+        var DailyPlaylists = [];
+        var StandardPlaylists = [];
+        const avaPlys = {DailyPlaylists, StandardPlaylists};
+        fs.readdir("daily_playlists", (err, files) => {
+            files.forEach(file => {
+                avaPlys.DailyPlaylists.push(file);
+            });
+            
+            /*for (file of files) {
+                avaPlys.DailyPlaylists.push(file);
+            }*/
+        });
+        fs.readdir("playlists", (err, files) => {
+            for (file of files) {
+                avaPlys.StandardPlaylists.push(file);
+            }
+            res.write(JSON.stringify(avaPlys));
+            res.end();
+        });
+        //res.write(JSON.stringify(avaPlys));
+        //res.end();
     } else {
         fs.readFile('ply_editor.html', function(err, data) {
             res.writeHead(200, {'Content-Type': 'text/html'});
@@ -232,7 +275,7 @@ async function asignDurationsToPly(plitem, index) {
             plitem.duration = duration;
             if (index > 0) {
                 plitem.startTime = nextStartTime;
-                nextStartTime = playlist.PlaylistItems[index - 1].startTime + duration;
+                nextStartTime = playlist.PlaylistItems[index].startTime + duration;
             } else if (index == 0) {
                 plitem.startTime = currentTime;
                 nextStartTime = currentTime + duration;
@@ -333,23 +376,23 @@ function checkTime() {
         posDetermMode = 0;
     }
     
-    // TODO Needs implemetation of posDetermMode 1
+    
     if (loadedNext == currentlyPlaying && status == "playing") {
         if (playlist.PlaylistItems.length > (loadedNext + 1)) {
             loadedNext += 1;
             var loadNextPath = playlist.PlaylistItems[loadedNext].path;
             ccgtunnel.loadbgAuto(1, 1, loadNextPath);
-            // currentlyPlayingName = playlist.PlaylistItems[currentlyPlaying].path; // Only used for posDetermMode 1
-            currentlyPlayingName = loadNextPath; // test for replacing the above
+            currentlyPlayingName = loadNextPath;
+            playlist.PlaylistItems[currentlyPlaying].startTime = currentTime;
+            for (plitem of playlist.PlaylistItems) {
+                if (plitem.id > currentlyPlaying) {
+                    playlist.PlaylistItems[plitem.id].startTime = (playlist.PlaylistItems[plitem.id - 1].startTime + playlist.PlaylistItems[plitem.id - 1].duration);
+                }
+            }
             if (logLevel > 1) { console.log("DEBUG: Loaded next item (" + loadedNext + ", " + loadNextPath + ")"); }
         } else {
-            /*loadedNext = -1;*/
-            /*var loadNextPath = playlist.PlaylistItems[loadedNext].path;*/
-            /*troubleCountRemaining -= allowedTroubleCount;*/
+            console.log("Reached end of playlist!");
             trouble();
-            /*ccgtunnel.loadbgAuto(1, 1, "AMB");
-            status = "trouble";
-            console.log("ERROR: Reached end of playlist! Entering trouble state");*/
         }
     }
     

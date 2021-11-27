@@ -48,6 +48,9 @@
     </style>
  </head>
  <body>
+    <div id="statusViewWrapper">
+        <div id="statusView"></div>
+    </div>
     <input name="play_btn" id="play_btn" value="play" type="submit" />
     <input name="stop_btn" id="stop_btn" value="stop" type="submit" />
     <input name="ldply_btn" id="ldply_btn" value="Load playlist" type="submit" />
@@ -57,8 +60,11 @@
     <input name="drawDebugInfo" id="drawDebugInfo" value="Draw debug info" type="submit" />
     <input name="tgglEdit" id="tgglEdit" value="Toggle edit" type="submit" />
     <input id="tgglAddItem" value="Toggle add clip" type="submit" />
-    <div id="statusViewWrapper">
-        <div id="statusView"></div>
+    <input id="newPlyBtn" value="New playlist" type="submit" />
+    <input id="tglPlyMenu" value="Toggle playlist menu" type="submit" />
+    
+    <div id="playlistMenuWrapper">
+        <div id="playlistMenu"></div>
     </div>
     <div id="addClipMenuWrapper">
         <div id="addClipMenu"></div>
@@ -93,6 +99,7 @@
             urlParams.set('act', 'loadPly');
             window.location.search = urlParams;*/
             GetCurPly();
+            onlinePly = true;
         });
         
         var templitem1;
@@ -138,10 +145,32 @@
             ToggleAddClip();
         });
         
+        $('#newPlyBtn').click(function(){ // TODO move to playlist menu
+            onlinePly = false;
+            uiLdPly.PlaylistItems = [];
+            DrawPlyInUI();
+            document.getElementById("statusView").innerHTML = "";
+        });
+        
+        var plyMenuDisplayed = false;
+        $('#tglPlyMenu').click(function(){
+            if (plyMenuDisplayed) {
+                document.getElementById("playlistMenu").innerHTML = "";
+                plyMenuDisplayed = false;
+            } else {
+                DrawPlaylistMenu();
+                plyMenuDisplayed = true;
+            }
+        });
+        
         var selectedPlyitem = -1;
         var selectedAddItem = -1;
         const melStat = {state:"N/A",playId:"N/A",playPth:"N/A"}
         var previousPlaId = -1;
+        var onlinePly = true;
+        
+        var currentUrl = (window.location.protocol + "//" + window.location.hostname + ":" + window.location.port); //TODO change all post and get requests to use this instead of generating it again.
+        console.log("Current detected url is: " + currentUrl);
         
         var uiLdPly
         
@@ -175,7 +204,6 @@
                 if (selectedPlyitem != -1) { document.getElementById(selectedPlyitem).classList.remove("selected"); }
                 selectedPlyitem = this.id;
                 document.getElementById(selectedPlyitem).classList.add("selected");
-                //console.log("selected item: " + selectedPlyitem);
                 UpdateInspector();
             });
             if (selectedPlyitem != -1) {
@@ -267,7 +295,6 @@
             var forLoopRun = 0;
             for (clip in availableClips) {
                 forLoopRun += 1;
-                console.log(clip);
                 drawClipsInspector += ("<div id=\"n" + clip + "\" class=\"avClipList");
                 
                 if ((forLoopRun % 2) == 0) {
@@ -284,7 +311,6 @@
                 document.getElementById(selectedAddItem).classList.add("selectedAdd");
             });
             $("#addClipBtn").click(function(){
-                console.log("Add clip clicked");
                 if (selectedAddItem != -1) {
                     const itemToAdd = {id:"",type:"clip",path:"",startMode:"",startTime:"",endAt:"",duration:""};
                     itemToAdd.id = uiLdPly.PlaylistItems.length;
@@ -298,28 +324,39 @@
             });
         }
         
+        function DrawPlaylistMenu() {
+            var avaPlysObj = httpGet(currentUrl + "/avaPlys");
+            console.log(avaPlysObj);
+            //Display available playlists and save playlist menu with option to make it daily.
+            var plyMenuToDraw = "availablePlaylists: ";
+            document.getElementById("playlistMenu").innerHTML = "test";
+        }
+        
+        
         
         setInterval(GetCurrentStatus, 5000);
         
         function GetCurrentStatus() {
-            melstat = JSON.parse(httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/getStatus"));
-            document.getElementById("statusView").innerHTML = melstat.state + ": " + melstat.playId + " " + melstat.playPth;
-            switch (melstat.state) {
-                case "playing":
-                    document.getElementById("statusView").style.color = "lime";
-                    break;
-                case "stopped":
-                    document.getElementById("statusView").style.color = "blue";
-                    break;
-                case "trouble":
-                    document.getElementById("statusView").style.color = "red";
-            }
-            if (previousPlaId != melstat.state) {
-                if (previousPlaId != -1) {
-                    document.getElementById(previousPlaId).classList.remove("playingItemVi");
+            if (onlinePly) {
+                melstat = JSON.parse(httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/getStatus"));
+                document.getElementById("statusView").innerHTML = melstat.state + ": " + melstat.playId + " " + melstat.playPth;
+                switch (melstat.state) {
+                    case "playing":
+                        document.getElementById("statusView").style.color = "lime";
+                        break;
+                    case "stopped":
+                        document.getElementById("statusView").style.color = "royalblue";
+                        break;
+                    case "trouble":
+                        document.getElementById("statusView").style.color = "red";
                 }
-                document.getElementById(melstat.playId).classList.add("playingItemVi");
-                previousPlaId = melstat.playId;
+                if (previousPlaId != melstat.state) {
+                    if (previousPlaId != -1) {
+                        document.getElementById(previousPlaId).classList.remove("playingItemVi");
+                    }
+                    document.getElementById(melstat.playId).classList.add("playingItemVi");
+                    previousPlaId = melstat.playId;
+                }
             }
         }
         
