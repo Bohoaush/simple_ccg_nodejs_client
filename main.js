@@ -44,6 +44,7 @@ var media_scanner_port = 8000;
 
 // Start http interface from file
 http.createServer(async function (req, res) {
+    console.log("Got http request on: " + req.url);
     if (req.url == "/playlist") { //TODO redo with switch cases
         res.write(JSON.stringify(playlist));
         return res.end();
@@ -70,24 +71,23 @@ http.createServer(async function (req, res) {
             res.write(JSON.stringify(returnStatus));
             res.end();
         }
-    } else if (req.url == "/pushPlaylist") {
-        var receivedNewPly = "";
-        var decoParams = (url.parse(req.url, true)).query;
+    } else if (req.url == "/pushPlaylist") { 
+        var receivedPushPlyObjStr = "";
         req.on('data', function(data) {
-            receivedNewPly += data;
+            receivedPushPlyObjStr += data;
         });
         req.on('end', function() {
-            if (decoParams["daily"] != null) {
-                fs.writeFile(("daily_playlists/" + decoParams["daily"] + ".json"), receivedNewPly, function(err) {
-                    if (err) throw err;
-                    console.log("New daily playlist saved");
-                });
-            } else if (decoParams["filename"] != null) {
-                fs.writeFile(("playlists/" + decoParams["filename"] + ".json"), receivedNewPly, function(err) {
-                    if (err) throw err;
-                    console.log("New playlist saved");
-                });
+            var receivedPushPlyObj = JSON.parse(receivedPushPlyObjStr);
+            var pushPlySubfolder;
+            if (receivedPushPlyObj.svPlyIsDailyChk) {
+                pushPlySubfolder = "daily_playlists/";
+            } else {
+                pushPlySubfolder = "playlists/";
             }
+            fs.writeFile((pushPlySubfolder + receivedPushPlyObj.svPlyFilename), JSON.stringify(receivedPushPlyObj.uiLdPly), function(err) {
+                if (err) throw err;
+                console.log("New playlist saved");
+            });
         });
     } else if (req.url == "/avaPlys") {
         var DailyPlaylists = [];

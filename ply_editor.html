@@ -325,11 +325,25 @@
         }
         
         function DrawPlaylistMenu() {
-            var avaPlysObj = httpGet(currentUrl + "/avaPlys");
-            console.log(avaPlysObj);
-            //Display available playlists and save playlist menu with option to make it daily.
-            var plyMenuToDraw = "availablePlaylists: ";
-            document.getElementById("playlistMenu").innerHTML = "test";
+            var avaPlysObj = JSON.parse(httpGet(currentUrl + "/avaPlys"));
+            //TODO Display available playlists and save playlist menu with option to make it daily.
+            var plyMenuToDraw = "Available playlists: <br>";
+            for (plfi of avaPlysObj.DailyPlaylists) {
+                plyMenuToDraw += (plfi + "<br>");
+            }
+            for (plfi of avaPlysObj.StandardPlaylists) {
+                plyMenuToDraw += (plfi + "<br>");
+            }
+            plyMenuToDraw += "<br><input id=\"svPlyIsDaily\" type=\"checkbox\"><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\">";
+            document.getElementById("playlistMenu").innerHTML = plyMenuToDraw;
+            $('#svPlyBtn').click(function(){
+                var svPlyFilename = document.getElementById("svPlyName").value;
+                var svPlyIsDailyChk = document.getElementById("svPlyIsDaily").checked;
+                const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk, uiLdPly}
+                if (svPlyFilename != "") {
+                    httpPost((currentUrl + "/pushPlaylist"), JSON.stringify(pushPlyWithParams));
+                }
+            });
         }
         
         
