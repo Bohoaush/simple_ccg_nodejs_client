@@ -1,10 +1,11 @@
 var fs = require("fs");
-var playout = require("./playout.js");
+//var playout = require("./playout.js");
 var timeHandler = require("./timehndl.js");
 
 const EventEmitter = require('events');
 const playlistUpdated = new EventEmitter();
 
+var nextStartTime;
 
 var playlist;
 var avaDailyPlys = [];
@@ -22,16 +23,17 @@ module.exports = {
     loadDailyPlaylists
 }
 
+setTimeout(function() {
+    module.exports.playlist = playlist;
+}, 5000);
 
-
-playlistUpdated.on('plyupdini', function(playlistJson) {
+playlistUpdated.on('plyupdini', async function(playlistJson) {
     playlist = JSON.parse(playlistJson);
-    asignDurationsToPly(playlist).then(ply => {
-        playlist = ply;
-        module.exports.playlist = ply;
-        console.log(module.exports.playlist);
-        playlistUpdated.emit('plyupdfin');
-    });
+    nextStartTime = timeHandler.currentTime;
+    playlist.PlaylistItems.forEach(asignDurationsToPly);
+    module.exports.playlist = playlist;
+    //console.log(module.exports.playlist);
+    playlistUpdated.emit('plyupdfin');
 });
 
 async function loadPlaylistFromFile(filename) {
@@ -52,32 +54,30 @@ async function loadDailyPlaylists() {
     avaDailyPlys = await listAvailablePlaylists("../daily_playlists");
 }
 
-async function asignDurationsToPly(ply) {
+function asignDurationsToPly(plitem, index) {
     return new Promise(resolve => {
-        var nextStartTime = timeHandler.currentTime;
-        for (plitem of ply.PlaylistItems) {
-            switch(plitem.type) {
-            
-                case "clip":
-                    playout.ccgtunnel.cinf(plitem.path).then(result => {
-                        var framecount = result.response.data.duration;
-                        var framerate = result.response.data.fps;
-                        framerate = framerate.replace("1/","");
-                        plitem.duration = (framecount/framerate);
-                        nextStartTime = plitem.startTime;
-                        console.log(plitem);
-                    }).catch(err => {
-                        //error getting cinf from ccg TODO
-                        console.log("foooooo");
-                    });
-                    break;
-                console.log(plitem);
-                //For now other items than clip are ignored
-                //TODO implement decklink, rtmp, image, templates?
-            }
-            console.log(plitem);
+        switch(plitem.type) {
+        
+            case "clip":
+                console.log(plitem.id);
+                global.ccgtunnel.cinf(plitem.path).then(result => {
+                    console.log(plitem.id);
+                    var framecount = result.response.data.duration;
+                    var framerate = result.response.data.fps;
+                    framerate = framerate.replace("1/","");
+                    plitem.duration = (framecount/framerate);
+                    plitem.startTime = nextStartTime;
+                    nextStartTime = plitem.startTime + plitem.duration;
+                    console.log(plitem);
+                }).catch(err => {
+                    //error getting cinf from ccg TODO
+                    console.log("foooooo");
+                });
+                break;
+            //For now other items than clip are ignored
+            //TODO implement decklink, rtmp, image, templates?
         }
-        resolve(ply);
+        resolve('done');
     });
 }
 

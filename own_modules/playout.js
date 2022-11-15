@@ -1,5 +1,5 @@
 var timeHandler = require("./timehndl.js");
-var playlistHandler = require("./timehndl.js");
+var playlistHandler = require("./plyhndl.js");
 var configuration = require("./settings.js");
 const {CasparCG} = require("casparcg-connection");
 var fs = require("fs");
@@ -8,12 +8,12 @@ const EventEmitter = require('events');
 const playStatus = new EventEmitter();
 
 module.exports = {
-    ccgtunnel,
+    //ccgtunnel,
     state,
     startPlayingFromFixed
 }
 
-var ccgtunnel;
+global.ccgtunnel;
 
 var state = {
     status: "stopped",
@@ -24,7 +24,7 @@ var state = {
 }
 
 setTimeout( function() {
-    ccgtunnel = new CasparCG(configuration.settings.ccg_ip, configuration.settings.ccg_port);
+    global.ccgtunnel = new CasparCG(configuration.settings.ccg_ip, configuration.settings.ccg_port);
     module.exports.ccgtunnel = ccgtunnel;
 }, 1000);
 
@@ -37,8 +37,7 @@ playStatus.on('statusChanged', function(){
 });
 
 async function startPlayingFromFixed() {
-    console.log("2");
-    var previousPlitemNumber = -2
+    var previousPlitemNumber = -1;
     for (plitem of playlistHandler.playlist.PlaylistItems) {
         previousPlitemNumber++;
         if (plitem.startTime < timeHandler.currentTime) { break; }
@@ -69,7 +68,7 @@ timeHandler.timeEvent.on('nextEvent', function() {
 
 function loadNextItem() {
     var nextItemNumber = (state.atItem + 1);
-    ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber]);
+    ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber].path);
     state.loadedNext = (nextItemNumber);
     playStatus.emit('statusChanged');
 }
