@@ -8,12 +8,19 @@ setTimeout(function(){
     switch(configuration.settings.on_restart) {
         case "laststate":
             playlistHandler.loadPlaylistFromFile(configuration.settings.last_ply);
-            playlistHandler.playlistUpdated.on('plyupdfin', function() {
+            /*playlistHandler.playlistUpdated.on('plyupdfin', function() {
                 playoutHandler.startPlayingFromFixed();
-            }, {once : true});
-            console.log("1");
+            }, {once : true});*/
     }
 }, 2000);
+
+setTimeout(function(){
+    playoutHandler.startPlayingFromFixed();
+}, 5000);
+
+/*setInterval(function(){
+    console.log(JSON.stringify(playoutHandler.state));
+}, 1000);*/
 
 /*setInterval(function() {
     console.log(playlistHandler.playlist);

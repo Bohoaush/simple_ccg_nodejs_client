@@ -4,7 +4,7 @@ const EventEmitter = require('events');
 const timeEvent = new EventEmitter();
 
 var currentTime = new Date();
-var nextEventStamp = 9999999999;
+var nextEventStamp = 9999999999999;
 
 
 module.exports = {
@@ -19,11 +19,12 @@ module.exports = {
 };
 
 setInterval(function() {
-    currentTime = Math.floor(Date.now()/1000);
-    if (currentTime >= nextEventStamp) {
-        timeEvent.emit('nextEvent');
+    module.exports.currentTime = Date.now();
+    if (module.exports.currentTime >= module.exports.nextEventStamp) {
+        console.log("nextEventStampReached");
+        module.exports.timeEvent.emit('nextEvent');
     }
-    if ((currentTime%10) == 0) {
+    if ((module.exports.currentTime%10000) == 0) {
         //playlistHandler.loadDailyPlaylists();
         timeEvent.emit('everyTenSeconds');
     }
