@@ -31,7 +31,22 @@ setTimeout(function() {
 
 playlistUpdated.on('plyupdini', async function(playlistJson, skipDurAssign, skipUpdFin) { 
     playlist = JSON.parse(playlistJson);
-    if (!skipDurAssign) {playlist.PlaylistItems.forEach(asignDurationsToPly);}
+    if (!skipDurAssign) {
+        playlist.PlaylistItems.forEach(
+            function(plitem, index){
+                asignDurationsToPly(plitem, index, playlist.PlaylistItems.length, skipUpdFin);
+            }
+        );
+    } else {
+        playlistUpdated.emit('plyupddur', skipUpdFin);
+    }
+    /*if (!skipUpdFin) {
+        module.exports.playlist = playlist;
+        playlistUpdated.emit('plyupdfin');
+    }*/
+});
+
+playlistUpdated.on('plyupddur', function(skipUpdFin) {
     if (!skipUpdFin) {
         module.exports.playlist = playlist;
         playlistUpdated.emit('plyupdfin');
@@ -98,7 +113,7 @@ async function loadDailyPlaylists() {
     });
 }
 
-function asignDurationsToPly(plitem, index) {
+function asignDurationsToPly(plitem, index, plyleng, skipUpdaFin) {
     switch(plitem.type) {
         
         case "clip":
@@ -109,6 +124,9 @@ function asignDurationsToPly(plitem, index) {
                 plitem.duration = (framecount/framerate);
                 plitem.startTime = nextStartTime;
                 nextStartTime = (plitem.startTime + (plitem.duration * 1000));
+                if (plitem.id == (plyleng - 1)) {
+                    playlistUpdated.emit('plyupddur', skipUpdaFin);
+                }
             }).catch(err => {
                 //error getting cinf from ccg TODO
                 console.log("foooooo" + err);
@@ -123,5 +141,15 @@ async function listAvailablePlaylists(directory) {
         fs.readdir(directory, (err, filenames) => {
             resolve(filenames);
         });
+    });
+}
+
+async function writePlaylistToFile(playlistToWrite, file) {
+    var plyWriteback = JSON.stringify(playlistToWrite);
+    fs.writeFile(file, plyWriteback, (err) => {
+        if (err) {
+            //TODO handle fs write errors
+            console.log(err);
+        }
     });
 }
