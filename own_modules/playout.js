@@ -48,13 +48,14 @@ async function startPlayingFromFixed() {
             break;
         }
     }
-    /*var seekAmount = Math.floor((timeHandler.currentTime - plitem.startTime)/1000);
-    ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path, undefined, undefined, undefined, undefined, undefined, seekAmount);*/
-    ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path);
+    var seekAmount = Math.floor((timeHandler.currentTime - playlistHandler.playlist.PlaylistItems[previousPlitemNumber].startTime)/40);
+    console.log(seekAmount);
+    ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path, undefined, undefined, undefined, undefined, undefined, seekAmount);
+    //ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path);
     module.exports.state.status = "playing";
     module.exports.state.atItem = previousPlitemNumber;
     //timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[previousPlitemNumber + 1].startTime;
-    loadNextItem();
+    setTimeout(function() {loadNextItem();}, 1000);
 }
 
 timeHandler.timeEvent.on('nextEvent', async function() {
