@@ -82,14 +82,13 @@ async function loadDailyPlaylists() {
             var tempdaiply = "";
             for (daiply of playlists) {
                 prevdaiply++;
-                console.log("wtf js?:" + daiply);
                 tempdaiply = daiply.replace(".json","");
                 tempdaiply = tempdaiply.replace(/_/g,":");
-                console.log(tempdaiply);
                 tempdaiply = Date.parse(tempdaiply);
-                console.log(tempdaiply);
                 if (tempdaiply > timeHandler.currentTime) {
                     break;
+                } else if (playlists[prevdaiply+2] == undefined) {
+                    prevdaiply = (prevdaiply + 1);
                 }
             }
             if (prevdaiply < 0) {prevdaiply = 0;}

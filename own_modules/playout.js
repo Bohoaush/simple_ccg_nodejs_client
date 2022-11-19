@@ -53,11 +53,14 @@ async function startPlayingFromFixed() {
     setTimeout(function() {loadNextItem();}, 1000);
 }
 
-timeHandler.timeEvent.on('nextEvent', async function() {
+timeHandler.timeEvent.on('nextEvent', async function() { //TODO fix skipping same item
     var ccgInfo = await ccgtunnel.info(1, 1).then(result => {
         var currentPlayingName = result.response.data.stage.layer.layer_1.foreground.file.name;
         currentPlayingName = currentPlayingName.replace(/\..*$/g,"");
-        if (currentPlayingName == playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].path) {
+        if (
+            currentPlayingName == playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].path && 
+            result.response.data.stage.layer.layer_1.foreground.file.time[0] < 2
+        ) {
             module.exports.state.atItem = module.exports.state.loadedNext;
             loadNextItem();
         }
