@@ -67,11 +67,11 @@ function asignDurationsToPly(plitem, index) {
                     framerate = framerate.replace("1/","");
                     plitem.duration = (framecount/framerate);
                     plitem.startTime = nextStartTime;
-                    nextStartTime = plitem.startTime + plitem.duration;
+                    nextStartTime.setTime(plitem.startTime.getTime() + (plitem.duration * 1000));
                     console.log(plitem);
                 }).catch(err => {
                     //error getting cinf from ccg TODO
-                    console.log("foooooo");
+                    console.log("foooooo" + err);
                 });
                 break;
             //For now other items than clip are ignored
