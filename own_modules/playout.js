@@ -57,27 +57,22 @@ async function startPlayingFromFixed() {
     loadNextItem();
 }
 
-timeHandler.timeEvent.on('nextEvent', function() {
-    var testCurrentPlaying = setInterval(async function() {
-        var ccgInfo = await ccgtunnel.info(1, 1).then(result => {
-            var currentPlayingName = result.response.data.stage.layer.layer_1.foreground.file.name;
-            currentPlayingName = currentPlayingName.replace(/\..*$/g,"");
-            console.log(currentPlayingName + "\n" + playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].path);
-            if (currentPlayingName == playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].path) {
-                module.exports.state.atItem++;
-                loadNextItem();
-                clearInterval(this);
-            }
-        }).catch(err => {
-            //error getting info from ccg TODO
-            console.log(err);
-        });
-    }, 1000);
+timeHandler.timeEvent.on('nextEvent', async function() {
+    var ccgInfo = await ccgtunnel.info(1, 1).then(result => {
+        var currentPlayingName = result.response.data.stage.layer.layer_1.foreground.file.name;
+        currentPlayingName = currentPlayingName.replace(/\..*$/g,"");
+        if (currentPlayingName == playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].path) {
+            module.exports.state.atItem = module.exports.state.loadedNext;
+            loadNextItem();
+        }
+    }).catch(err => {
+        //error getting info from ccg TODO
+        console.log(err);
+    });
 });
 
 function loadNextItem() {
     var nextItemNumber = (module.exports.state.atItem + 1);
-    console.log("nextItemNumber: " + nextItemNumber);
     console.log(playlistHandler.playlist.PlaylistItems[nextItemNumber]);
     //console.log(playlistHandler.playlist);
     ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber].path);
