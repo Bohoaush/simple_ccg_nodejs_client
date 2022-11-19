@@ -20,12 +20,11 @@ module.exports = {
 
 setInterval(function() {
     module.exports.currentTime = Date.now();
-    if (module.exports.currentTime >= module.exports.nextEventStamp) {
+    if (module.exports.currentTime > module.exports.nextEventStamp) {
         console.log("nextEventStampReached");
         module.exports.timeEvent.emit('nextEvent');
     }
     if ((module.exports.currentTime%10000) == 0) {
-        //playlistHandler.loadDailyPlaylists();
         timeEvent.emit('everyTenSeconds');
     }
 }, 1000);

@@ -20,8 +20,11 @@ function generateSettings() {
         ccg_port: 5250,
         frontend_port: 8084, 
         on_restart: "laststate",
-        state_file: "../lastState.json",
-        last_ply: "./lastPly.json"
+        state_file: "./lastState.json",
+        last_ply: "./lastPly.json",
+        daily_enabled: true,
+        daily_plys: "./daily_playlists/",
+        plys: "./playlists"
     }
     writeSettingsToFile();
 }

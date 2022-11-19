@@ -42,19 +42,14 @@ async function startPlayingFromFixed() {
     console.log(JSON.stringify(playlistHandler.playlist.PlaylistItems));
     for (plitem of playlistHandler.playlist.PlaylistItems) {
         previousPlitemNumber++;
-        console.log(new Date(plitem.startTime) + "\n" + new Date(timeHandler.currentTime));
-        if (plitem.startTime > timeHandler.currentTime) { 
-            console.log("did break of");
+        if (plitem.startTime > timeHandler.currentTime) {
             break;
         }
     }
     var seekAmount = Math.floor((timeHandler.currentTime - playlistHandler.playlist.PlaylistItems[previousPlitemNumber].startTime)/40);
-    console.log(seekAmount);
     ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path, undefined, undefined, undefined, undefined, undefined, seekAmount);
-    //ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path);
     module.exports.state.status = "playing";
     module.exports.state.atItem = previousPlitemNumber;
-    //timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[previousPlitemNumber + 1].startTime;
     setTimeout(function() {loadNextItem();}, 1000);
 }
 
@@ -74,8 +69,6 @@ timeHandler.timeEvent.on('nextEvent', async function() {
 
 function loadNextItem() {
     var nextItemNumber = (module.exports.state.atItem + 1);
-    console.log(playlistHandler.playlist.PlaylistItems[nextItemNumber]);
-    //console.log(playlistHandler.playlist);
     ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber].path);
     module.exports.state.loadedNext = (nextItemNumber);
     playStatus.emit('statusChanged');
