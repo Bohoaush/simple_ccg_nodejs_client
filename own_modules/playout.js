@@ -46,11 +46,17 @@ async function startPlayingFromFixed() {
             break;
         }
     }
+    console.log(previousPlitemNumber);
+    console.log("crt: " + timeHandler.currentTime + "\nstt: " + playlistHandler.playlist.PlaylistItems[previousPlitemNumber].startTime);
     var seekAmount = Math.floor((timeHandler.currentTime - playlistHandler.playlist.PlaylistItems[previousPlitemNumber].startTime)/40);
-    ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path, undefined, undefined, undefined, undefined, undefined, seekAmount);
-    module.exports.state.status = "playing";
-    module.exports.state.atItem = previousPlitemNumber;
-    setTimeout(function() {loadNextItem();}, 1000);
+    console.log(seekAmount);
+    ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[previousPlitemNumber].path, undefined, undefined, undefined, undefined, undefined, seekAmount).then(x => {
+        module.exports.state.status = "playing";
+        module.exports.state.atItem = previousPlitemNumber;
+        setTimeout(function() {loadNextItem();}, 1000);
+    }).catch(err => {
+        console.log(err); //TODO you know what...
+    });
 }
 
 timeHandler.timeEvent.on('nextEvent', async function() { //TODO fix skipping same item

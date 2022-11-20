@@ -53,6 +53,10 @@ playlistUpdated.on('plyupddur', function(skipUpdFin) {
     }
 });
 
+playlistUpdated.on('plyupdfin', function() {
+    writePlaylistToFile(module.exports.playlist, configuration.settings.last_ply);
+});
+
 async function loadPlaylistFromFile(filename, startTimeSource, skipDuraAssign, skipUpdaFin) { 
     return new Promise(resolve => {
         fs.readFile(filename, (err, data) => {

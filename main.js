@@ -9,9 +9,6 @@ setTimeout(function(){
         case "laststate":
             /////////////////////////////////////filename, startTimeSource, skip duration assign, skip update finish
             playlistHandler.loadPlaylistFromFile(configuration.settings.last_ply, "file", true, false);
-            /*playlistHandler.playlistUpdated.on('plyupdfin', function() {
-                playoutHandler.startPlayingFromFixed();
-            }, {once : true});*/
             break;
             
         case "daily":
