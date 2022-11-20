@@ -63,6 +63,7 @@ async function loadPlaylistFromFile(filename, startTimeSource, skipDuraAssign, s
                 if (data != null) {
                     switch(startTimeSource) {
                         case "filename":
+                            filename = filename.replace(configuration.settings.daily_plys,"");
                             filename = filename.replace(/_/g,":");
                             filename = filename.replace(".json","");
                             nextStartTime = (Date.parse(filename));
