@@ -1,160 +1,158 @@
  var http = require("http");
  var fs = require("fs");
  
- var playlistHandler = require('./own_modules/plyhndl.js');
+ var playlistHandler = require('./plyhndl.js');
+ var playoutHandler = require('./playout.js');
+ var configuration = require('./settings.js');
  
  const EventEmitter = require('events');
  
  const userUpdatedPlaylist = new EventEmitter();
  const userUpdatedBehavior = new EventEmitter();
  
- 
- 
- module.exports = {
-     
-     userUpdatedBehavior, //use later as userUpdatedBehavior.emmit(userPlayout);?
-     userUpdatedPlaylist
-     
- };
- 
- 
- userPlaylist = null;
- userPlayout = {
-     playoutStatus: "playing",
-     playoutIdAt: 0
- };
- 
- 
- 
- http.createServer(async function (req, res) {
-     
-    console.log("Got http request on: " + req.url);
-    
-    
-    switch(req.url) {
+ setTimeout(function() {
+    http.createServer(async function (req, res) {
+        
+        console.log("Got http request on: " + req.url);
         
         
-        case "/playlist":
-            res.write(JSON.stringify(playlist));
-            return res.end();
-            break;
-        
+        switch(req.url) {
             
-        //TODO Many things from here don't belong in "Frontend connection" module
-        case "/play":
-            var plitemJsoObj = "";
-            req.on('data', function(data) {
-                plitemJsoObj += data;
-            });
-            req.on('end', function() {
-                var itemIdToPlayNow = JSON.parse(plitemJsoObj);
-                var itemNameToPlayNow = findPathFromPlyId(itemIdToPlayNow);
-                play(1,1,itemNameToPlayNow);
-                troubleCountRemaining = allowedTroubleCount;
-                currentlyPlaying = itemIdToPlayNow;
-                currentlyPlayingName = playPath;
-                loadedNext = itemIdToPlayNow;
-                status = "playing";
-                startedPlayingAt = currentTime; // TODO Not used curently - for determining start times of next items
-                previousCCGinfo = ccgtunnel.info(1, 1);
-                delayInfo = 1;
+            
+            case "/playlist":
+                res.write(JSON.stringify(playlistHandler.playlist));
+                return res.end();
+                break;
+            
+                
+            case "/play":
+                switch(playoutHandler.state) {
+                    case "paused":
+                        playoutHandler.resume();
+                        break;
+                        
+                    default:
+                        var plitemJsoObj = "";
+                        req.on('data', function(data) {
+                            plitemJsoObj += data;
+                        });
+                        req.on('end', function() {
+                            var itemIdToPlayNow = JSON.parse(plitemJsoObj);
+                            console.log("going to play: " + itemIdToPlayNow);
+                            playoutHandler.play(itemIdToPlayNow);
+                            res.end();
+                        });
+                        break;
+                }
+                break;
+                
+                
+            //TODO /pause, /stop
+            case "/pause":
+                switch(playoutHandler.state) {
+                    case "playing":
+                        playoutHandler.pause();
+                        break;
+                        
+                    case "paused":
+                        playoutHandler.resume();
+                        break;
+                }
                 res.end();
-            });
-            break;
-            
-            
-        //TODO /pause, /stop
-            
-            
-        case "/plysend":
-            if (req.method == 'POST') {
-                var receiveModPly = "";
-                req.on('data', function(data) {
-                    receiveModPly += data;
-                })
-                req.on('end', function() {
-                    playlist = JSON.parse(receiveModPly);
-                    playlist.PlaylistItems.forEach(asignDurationsToPly);
+                break;
+                
+                
+            case "/plysend":
+                if (req.method == 'POST') {
+                    var receiveModPly = "";
+                    req.on('data', function(data) {
+                        receiveModPly += data;
+                    })
+                    req.on('end', function() {
+                        playlistHandler.playlist = JSON.parse(receiveModPly);
+                        playlistHandler.playlistUpdated.emit('plyupdfin');
+                        res.end();
+                    });
+                }
+                break;
+                
+                
+            case "/exploreClips":
+                global.ccgtunnel.cls().then(returnCls => {
+                    console.log(JSON.stringify(returnCls.response.data));
+                    res.write(JSON.stringify(returnCls.response.data));
+                    res.end();
+                }).catch(err => {
+                    console.log(err);
+                    res.write(JSON.stringify(err)); //TODO implement in frontend
                     res.end();
                 });
-            }
-            break;
-            
-            
-        case "/exploreClips":
-            var returnCinf = await ccgtunnel.cls();
-            console.log(JSON.stringify(returnCinf.response.data));
-            res.write(JSON.stringify(returnCinf.response.data));
-            res.end();
-            break;
-            
-            
-        case "/getStatus":
-            if (currentlyPlaying != -1) {
-                const returnStatus = {state:status,playId:currentlyPlaying,playPth:playlist.PlaylistItems[currentlyPlaying].path};
-                res.write(JSON.stringify(returnStatus));
-                res.end();
-            }
-            break;
-            
-            
-        case "/pushPlaylist":
-            var receivedPushPlyObjStr = "";
-            req.on('data', function(data) {
-                receivedPushPlyObjStr += data;
-            });
-            req.on('end', function() {
-                var receivedPushPlyObj = JSON.parse(receivedPushPlyObjStr);
-                var pushPlySubfolder;
-                if (receivedPushPlyObj.svPlyIsDailyChk) {
-                    pushPlySubfolder = "daily_playlists/";
-                } else {
-                    pushPlySubfolder = "playlists/";
-                }
-                fs.writeFile((pushPlySubfolder + receivedPushPlyObj.svPlyFilename), JSON.stringify(receivedPushPlyObj.uiLdPly), function(err) {
-                    if (err) throw err;
-                    console.log("New playlist saved");
-                    FindDailyPlaylists();
-                });
-            });
-            break;
-            
-            
-        case "/avaPlys":
-            var DailyPlaylists = [];
-            var StandardPlaylists = [];
-            const avaPlys = {DailyPlaylists, StandardPlaylists};
-            fs.readdir("daily_playlists", (err, files) => {
-                files.forEach(file => {
-                    avaPlys.DailyPlaylists.push(file);
-                });
+                break;
                 
-                /*for (file of files) {
-                    avaPlys.DailyPlaylists.push(file);
-                }*/
-            });
-            fs.readdir("playlists", (err, files) => {
-                for (file of files) {
-                    avaPlys.StandardPlaylists.push(file);
-                }
-                res.write(JSON.stringify(avaPlys));
+                
+            case "/getStatus":
+                res.write(JSON.stringify(playoutHandler.state));
                 res.end();
-            });
-            break;
-            
-            
-        default:
-            fs.readFile('ply_editor.html', function(err, data) {
-                res.writeHead(200, {'Content-Type': 'text/html'});
-                res.write(data);
-                return res.end();
-            });
-            break;
-            
-    }
-    
-    
-}).listen(interface_port);
+                break;
+                
+                
+            case "/pushPlaylist": 
+                var receivedPushPlyObjStr = "";
+                req.on('data', function(data) {
+                    receivedPushPlyObjStr += data;
+                });
+                req.on('end', function() {
+                    var receivedPushPlyObj = JSON.parse(receivedPushPlyObjStr);
+                    var pushPlySubfolder;
+                    if (receivedPushPlyObj.svPlyIsDailyChk) {
+                        pushPlySubfolder = configuration.settings.daily_plys;
+                    } else {
+                        pushPlySubfolder = configuration.settings.plys;
+                    }
+                    playlistHandler.writePlaylistToFile((pushPlySubfolder + receivedPushPlyObj.svPlyFilename), receivedPushPlyObj.uiLdPly);
+                });
+                break;
+                
+                
+            case "/avaPlys": //Very likely broken
+                var DailyPlaylists = [];
+                var StandardPlaylists = [];
+                //const avaPlys = {DailyPlaylists, StandardPlaylists};
+                var avaPlys = new Promise(resolve => {
+                    playlistHandler.listAvailablePlaylists(configuration.settings.daily_plys).then(filenames => {
+                        DailyPlaylists = filenames;
+                    }).catch(err => {
+                        throw err;
+                    });
+                    playlistHandler.listAvailablePlaylists(configuration.settings.plys).then(filenames => {
+                        StandardPlaylists = filenames;
+                    }).catch(err => {
+                        throw err;
+                    });
+                    resolve(DailyPlaylists, StandardPlaylists);
+                }).then(avaplys => {
+                    res.write(JSON.stringify(avaplys));
+                    res.end();
+                }).catch(err => {
+                    res.write(err);
+                    res.end();
+                });
+                break;
+                
+                
+            default:
+                fs.readFile('ply_editor.html', function(err, data) {
+                    res.writeHead(200, {'Content-Type': 'text/html'});
+                    res.write(data);
+                    return res.end();
+                });
+                break;
+                
+        }
+        
+        
+    }).listen(configuration.settings.frontend_port);
 
-// Log localhost http server start to console
-console.log('Server running at http://127.0.0.1:' + interface_port);
+    // Log localhost http server start to console
+    console.log('Server running at http://127.0.0.1:' + configuration.settings.frontend_port);
+ }, 1000);

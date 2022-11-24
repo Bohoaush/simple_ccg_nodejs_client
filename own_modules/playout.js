@@ -17,7 +17,12 @@ var state = {
 
 module.exports = {
     state,
-    startPlayingFromFixed
+    startPlayingFromFixed, 
+    play,
+    pause,
+    resume,
+    next,
+    stop,
 }
 
 global.ccgtunnel;
@@ -50,16 +55,53 @@ async function startPlayingFromFixed() {
 }
 
 function play(id, seek, loop) {
+    console.log(id);
     ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[id].path, loop, undefined, undefined, undefined, undefined, seek).then(x => {
         module.exports.state.status = "playing";
         module.exports.state.atItem = id;
         setTimeout(function() {loadNextItem();}, 1000);
     }).catch(err => {
-        console.log(err); //TODO you know what...
+        console.log(err); //TODO
     });
 }
 
-timeHandler.timeEvent.on('nextEvent', async function() {
+function pause() {
+    ccgtunnel.pause(1,1).then(x => {
+        module.exports.state.status = "paused";
+        timeHandler.nextEventStamp = 9999999999999;
+    }).cath(err => {
+        console.log(err); //TODO
+    });
+}
+
+function resume() {
+    ccgtunnel.resume(1,1).then(x => {
+        module.exports.state.status = "playing";
+        loadNextItem();
+    }).cath(err => {
+        console.log(err); //TODO
+    });
+}
+
+function next() {
+    play((module.exports.atItem + 1), false, false);
+    setTimeout(function() {loadNextItem();}, 1000);
+}
+
+function stop() {
+    ccgtunnel.stop(1,1).then(x => {
+        module.exports.state.status = "stopped";
+        timeHandler.nextEventStamp = 9999999999999;
+    }).cath(err => {
+        console.log(err); //TODO
+    });
+}
+
+function trouble() {
+    ccgtunnel.loadBgAuto(1,1, configuration.settings.trouble_clip, true);
+}
+
+timeHandler.timeEvent.on('nextEvent', async function() { 
     var ccgInfo = await ccgtunnel.info(1, 1).then(result => {
         var currentPlayingName = result.response.data.stage.layer.layer_1.foreground.file.name;
         currentPlayingName = currentPlayingName.replace(/\..*$/g,"");
@@ -77,9 +119,19 @@ timeHandler.timeEvent.on('nextEvent', async function() {
 });
 
 function loadNextItem() {
-    var nextItemNumber = (module.exports.state.atItem + 1);
+    var nextItemNumber = (module.exports.state.atItem - -1);
     ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber].path);
     module.exports.state.loadedNext = (nextItemNumber);
     playStatus.emit('statusChanged');
-    timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
+    ccgtunnel.info(1,1).then(result => { //TODO do this on plyupdfin
+        var remaDur = ((result.response.data.stage.layer.layer_1.foreground.file.time[1] - result.response.data.stage.layer.layer_1.foreground.file.time[0])*1000);
+        playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].startTime = (timeHandler.currentTime + remaDur);
+        for (let nnin = (module.exports.state.loadedNext+1); nnin < playlistHandler.playlist.PlaylistItems.length; nnin++) {
+            playlistHandler.playlist.PlaylistItems[nnin].startTime = (playlistHandler.playlist.PlaylistItems[nnin - 1].startTime + playlistHandler.playlist.PlaylistItems[nnin - 1].duration);
+        }
+        timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
+    }).catch(err => {
+        console.log(err);
+        timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
+    });
 }

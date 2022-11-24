@@ -2,6 +2,7 @@ var configuration = require("./own_modules/settings.js");
 var playlistHandler = require("./own_modules/plyhndl.js");
 var playoutHandler = require("./own_modules/playout.js");
 var logger = require("./own_modules/logging.js");
+var frontendConnection = require("./own_modules/frontconn.js");
 
 
 setTimeout(function(){

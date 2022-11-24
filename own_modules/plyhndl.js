@@ -22,7 +22,8 @@ module.exports = {
     playlistUpdated,
     //functions
     loadPlaylistFromFile,
-    loadDailyPlaylists
+    loadDailyPlaylists,
+    writePlaylistToFile
 }
 
 setTimeout(function() {

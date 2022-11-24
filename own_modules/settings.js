@@ -24,7 +24,8 @@ function generateSettings() {
         last_ply: "./lastPly.json",
         daily_enabled: true,
         daily_plys: "./daily_playlists/",
-        plys: "./playlists"
+        plys: "./playlists",
+        trouble_clip: "AMB"
     }
     writeSettingsToFile();
 }
