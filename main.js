@@ -23,18 +23,10 @@ setTimeout(function(){
     }
 }, 2000);
 
-playlistHandler.playlistUpdated.on('plyupdfin', function() {
+playlistHandler.playlistUpdated.once('plyupdfin', () => {
     playoutHandler.startPlayingFromFixed();
-}, {once : true});
-
-/*setTimeout(function(){
-    playoutHandler.startPlayingFromFixed();
-}, 5000);*/
+});
 
 setInterval(function(){
     console.log(JSON.stringify(playoutHandler.state));
 }, 1000);
-
-/*setInterval(function() {
-    console.log(playlistHandler.playlist);
-}, 1000);*/
