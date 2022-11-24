@@ -13,8 +13,6 @@
  setTimeout(function() {
     http.createServer(async function (req, res) {
         
-        console.log("Got http request on: " + req.url);
-        
         
         switch(req.url) {
             
@@ -46,8 +44,7 @@
                 }
                 break;
                 
-                
-            //TODO /pause, /stop
+
             case "/pause":
                 switch(playoutHandler.state) {
                     case "playing":
@@ -60,6 +57,11 @@
                 }
                 res.end();
                 break;
+                
+                
+            case "/stop":
+                playoutHandler.stop();
+                res.end();
                 
                 
             case "/plysend":

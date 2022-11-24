@@ -92,7 +92,7 @@ function stop() {
     ccgtunnel.stop(1,1).then(x => {
         module.exports.state.status = "stopped";
         timeHandler.nextEventStamp = 9999999999999;
-    }).cath(err => {
+    }).catch(err => {
         console.log(err); //TODO
     });
 }
