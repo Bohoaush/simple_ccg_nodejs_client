@@ -422,10 +422,10 @@
             //TODO Display available playlists and save playlist menu with option to make it daily.
             console.log(avaPlysObj);
             var plyMenuToDraw = "Available playlists: <br>";
-            for (plfi of avaPlysObj.DailyPlaylists) {
+            for (plfi of avaPlysObj[0]) {
                 plyMenuToDraw += (plfi + "<br>");
             }
-            for (plfi of avaPlysObj.StandardPlaylists) {
+            for (plfi of avaPlysObj[1]) {
                 plyMenuToDraw += (plfi + "<br>");
             }
             plyMenuToDraw += "<br><input id=\"svPlyIsDaily\" type=\"checkbox\"><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\">";

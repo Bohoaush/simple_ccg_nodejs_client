@@ -116,27 +116,28 @@
                 break;
                 
                 
-            case "/avaPlys": //Very likely broken
-                var DailyPlaylists = [];
-                var StandardPlaylists = [];
+            case "/avaPlys":
                 //const avaPlys = {DailyPlaylists, StandardPlaylists};
-                var avaPlys = new Promise(resolve => {
+                var DailyPlaylists = new Promise(resolve => {
                     playlistHandler.listAvailablePlaylists(configuration.settings.daily_plys).then(filenames => {
-                        DailyPlaylists = filenames;
+                        resolve(filenames);
                     }).catch(err => {
                         throw err;
                     });
+                });
+                var StandardPlaylists = new Promise(resolve => {
                     playlistHandler.listAvailablePlaylists(configuration.settings.plys).then(filenames => {
-                        StandardPlaylists = filenames;
+                        resolve(filenames);
                     }).catch(err => {
                         throw err;
                     });
-                    resolve(DailyPlaylists, StandardPlaylists);
-                }).then(avaplys => {
+                });
+                Promise.all([DailyPlaylists,StandardPlaylists]).then(avaplys => {
                     res.write(JSON.stringify(avaplys));
                     res.end();
                 }).catch(err => {
-                    res.write(err);
+                    res.write(JSON.stringify(err));
+                    console.log(err);
                     res.end();
                 });
                 break;
