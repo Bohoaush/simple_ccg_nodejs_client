@@ -99,7 +99,8 @@ function stop() {
 }
 
 function trouble() {
-    ccgtunnel.loadBgAuto(1,1, configuration.settings.trouble_clip, true);
+    ccgtunnel.loadbgAuto(1,1, configuration.settings.trouble_clip, true);
+    module.exports.state.status = "trouble";
 }
 
 timeHandler.timeEvent.on('nextEvent', async function() { 
@@ -121,18 +122,23 @@ timeHandler.timeEvent.on('nextEvent', async function() {
 
 function loadNextItem() {
     var nextItemNumber = (module.exports.state.atItem - -1);
-    ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber].path);
-    module.exports.state.loadedNext = (nextItemNumber);
-    playStatus.emit('statusChanged');
-    ccgtunnel.info(1,1).then(result => { //TODO do this on plyupdfin
-        var remaDur = ((result.response.data.stage.layer.layer_1.foreground.file.time[1] - result.response.data.stage.layer.layer_1.foreground.file.time[0])*1000);
-        playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].startTime = (timeHandler.currentTime + remaDur);
-        for (let nnin = (module.exports.state.loadedNext+1); nnin < playlistHandler.playlist.PlaylistItems.length; nnin++) {
-            playlistHandler.playlist.PlaylistItems[nnin].startTime = (playlistHandler.playlist.PlaylistItems[nnin - 1].startTime + (playlistHandler.playlist.PlaylistItems[nnin - 1].duration*1000));
-        }
-        timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
-    }).catch(err => {
-        console.log(err);
-        timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
-    });
+    if (nextItemNumber < playlistHandler.playlist.PlaylistItems.length) {
+        ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber].path);
+        module.exports.state.loadedNext = (nextItemNumber);
+        playStatus.emit('statusChanged');
+        ccgtunnel.info(1,1).then(result => { //TODO do this on plyupdfin
+            var remaDur = ((result.response.data.stage.layer.layer_1.foreground.file.time[1] - result.response.data.stage.layer.layer_1.foreground.file.time[0])*1000);
+            playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].startTime = (timeHandler.currentTime + remaDur);
+            for (let nnin = (module.exports.state.loadedNext+1); nnin < playlistHandler.playlist.PlaylistItems.length; nnin++) {
+                playlistHandler.playlist.PlaylistItems[nnin].startTime = (playlistHandler.playlist.PlaylistItems[nnin - 1].startTime + (playlistHandler.playlist.PlaylistItems[nnin - 1].duration*1000));
+            }
+            timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
+        }).catch(err => {
+            console.log(err);
+            timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
+        });
+    } else {
+        trouble();
+        console.log("reached end of playlist"); //TODO
+    }
 }
