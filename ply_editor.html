@@ -238,10 +238,8 @@
                     webpageUItoDRAW += " odd"
                 }
                 
-                console.log(plitem.startTime);
                 var startTimeUTCms = new Date(Math.floor(plitem.startTime));
                 var startTimeString = startTimeUTCms.toISOString();
-                console.log(startTimeString);
                 
                 var plitDurHour = Math.trunc(plitem.duration/3600);
                 if (plitDurHour < 10) {plitDurHour = "0" + plitDurHour;}
@@ -370,7 +368,7 @@
                 
                 drawClipsInspector += ("\"><td>" + availableClips[clip].name + "</td><td>" + plitDurDisp + "</td></tr>");
             }
-            drawClipsInspector += "<input id=\"addClipBtn\" value=\"Add selected clip\" type=\"submit\">"
+            drawClipsInspector += "<input id=\"addClipBtn\" class=\"button\" value=\"Add selected clip\" type=\"submit\"><input id=\"insClipBtn\" class=\"button\" value=\"insert selected clip\" type=\"submit\">"
             document.getElementById("addClipMenu").innerHTML = drawClipsInspector;
             $(".avClipList").click(function(){
                 if (selectedAddItem != -1) { document.getElementById(selectedAddItem).classList.remove("selectedAdd"); }
@@ -395,12 +393,34 @@
                     console.log("You cannot add NO item!"); //TODO
                 }
             });
-            //TODO add insert button
+            $("#insClipBtn").click(function(){ 
+                if (selectedAddItem != -1 && selectedPlyitem != -1) {
+                    const itemToAdd = {id:"",type:"clip",path:"",startMode:"",startTime:"",endAt:"",duration:""};
+                    itemToAdd.id = selectedPlyitem;
+                    itemToAdd.path = availableClips[selectedAddItem.replace("n", "")].name;
+                    itemToAdd.startMode = "auto";
+                    itemToAdd.duration = availableClips[selectedAddItem.replace("n", "")].duration;
+                    if (itemToAdd.id > 0) {
+                        itemToAdd.startTime = (uiLdPly.PlaylistItems[itemToAdd.id-1].startTime + (uiLdPly.PlaylistItems[itemToAdd.id-1].duration*1000));
+                    } else {
+                        itemToAdd.startTime = Date.now();
+                    }
+                    uiLdPly.PlaylistItems.splice(selectedPlyitem,0,itemToAdd);
+                    for (let i = itemToAdd.id; i < uiLdPly.PlaylistItems.length; i++) {
+                        uiLdPly.PlaylistItems[i].id = i;
+                        uiLdPly.PlaylistItems[i].startTime = (uiLdPly.PlaylistItems[i-1].startTime + (uiLdPly.PlaylistItems[i-1].duration*1000));
+                    }
+                    DrawPlyInUI();
+                } else {
+                    console.log("No clip to add or ply item selected!"); //TODO
+                }
+            });
         }
         
         function DrawPlaylistMenu() {
             var avaPlysObj = JSON.parse(httpGet(currentUrl + "/avaPlys"));
             //TODO Display available playlists and save playlist menu with option to make it daily.
+            console.log(avaPlysObj);
             var plyMenuToDraw = "Available playlists: <br>";
             for (plfi of avaPlysObj.DailyPlaylists) {
                 plyMenuToDraw += (plfi + "<br>");
