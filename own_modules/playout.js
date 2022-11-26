@@ -59,6 +59,7 @@ function play(id, seek, loop) {
     ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[id].path, loop, undefined, undefined, undefined, undefined, seek).then(x => {
         module.exports.state.status = "playing";
         module.exports.state.atItem = id;
+        playlistHandler.playlist.PlaylistItems[id].startTime = timeHandler.currentTime;
         setTimeout(function() {loadNextItem();}, 1000);
     }).catch(err => {
         console.log(err); //TODO
@@ -127,7 +128,7 @@ function loadNextItem() {
         var remaDur = ((result.response.data.stage.layer.layer_1.foreground.file.time[1] - result.response.data.stage.layer.layer_1.foreground.file.time[0])*1000);
         playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].startTime = (timeHandler.currentTime + remaDur);
         for (let nnin = (module.exports.state.loadedNext+1); nnin < playlistHandler.playlist.PlaylistItems.length; nnin++) {
-            playlistHandler.playlist.PlaylistItems[nnin].startTime = (playlistHandler.playlist.PlaylistItems[nnin - 1].startTime + playlistHandler.playlist.PlaylistItems[nnin - 1].duration);
+            playlistHandler.playlist.PlaylistItems[nnin].startTime = (playlistHandler.playlist.PlaylistItems[nnin - 1].startTime + (playlistHandler.playlist.PlaylistItems[nnin - 1].duration*1000));
         }
         timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
     }).catch(err => {

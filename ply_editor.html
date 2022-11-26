@@ -85,7 +85,7 @@
         <div id="statusView">
             <table id="statusViewTable">
                 <tr><td>time now</td><td>clip elapsed</td><td>clip remaining</td></tr>
-                <tr><td id="curTimeDisp"></td><td>id</td><td>path</td></tr>
+                <tr><td id="curTimeDisp"></td><td id="elapsDisp">--:--:--</td><td id="remainDisp">--:--:--</td></tr>
                 <tr><td>status</td><td>id</td><td>path</td></tr>
                 <tr><td id="statDisp">playing</td><th id="plaIdDisp">N/A</th><th id="plaPatDisp">Not initialized</th></tr>
                 <tr><td>loaded</td><td id="ldIdDisp">N/A</td><td id="ldPatDisp">Not initialized</td></tr>
@@ -238,8 +238,10 @@
                     webpageUItoDRAW += " odd"
                 }
                 
-                var startTimeUTCms = new Date(plitem.startTime);
+                console.log(plitem.startTime);
+                var startTimeUTCms = new Date(Math.floor(plitem.startTime));
                 var startTimeString = startTimeUTCms.toISOString();
+                console.log(startTimeString);
                 
                 var plitDurHour = Math.trunc(plitem.duration/3600);
                 if (plitDurHour < 10) {plitDurHour = "0" + plitDurHour;}
@@ -325,7 +327,12 @@
                 $("#insRemove").click(function(){
                     delete uiLdPly.PlaylistItems[selectedPlyitem];
                     uiLdPly.PlaylistItems = uiLdPly.PlaylistItems.filter(aplit => aplit !== null);
-                    console.log(JSON.stringify(uiLdPly));
+                    var increm = -1;
+                    for (uiPlitem of uiLdPly.PlaylistItems) {
+                        increm++;
+                        uiPlitem.id = increm;
+                    }
+                    DrawPlyInUI();
                 });
             }
         }
@@ -447,6 +454,26 @@
             }
             var nowDate = new Date();
             document.getElementById("curTimeDisp").innerHTML = (nowDate.toString()).replace(/GMT.*/g, "");
+            
+            if (melstat.status == "playing") {
+                var elapsRemain = [];
+                for (var i = melstat.atItem; i <= (melstat.atItem - -1); i++) {
+                    var startNowDiff = Math.abs((nowDate - uiLdPly.PlaylistItems[i].startTime)/1000);
+                    console.log(startNowDiff);
+                
+                    var stNoDiHour = Math.trunc(startNowDiff/3600);
+                    if (stNoDiHour < 10) {stNoDiHour = "0" + stNoDiHour;}
+                    var stNoDiMinu = Math.trunc((startNowDiff-(stNoDiHour*60))/60);
+                    if (stNoDiMinu < 10) {stNoDiMinu = "0" + stNoDiMinu;}
+                    var stNoDiSeco = Math.floor(startNowDiff-(stNoDiHour*3600)-(stNoDiMinu*60));
+                    if (stNoDiSeco < 10) {stNoDiSeco = "0" + stNoDiSeco;}
+                    elapsRemain[i-melstat.atItem] = (stNoDiHour + ":" + stNoDiMinu + ":" + stNoDiSeco);
+                    console.log(elapsRemain);
+                }
+                
+                document.getElementById("elapsDisp").innerHTML = elapsRemain[0];
+                document.getElementById("remainDisp").innerHTML = ("<b>" + elapsRemain[1] + "</b>");
+            }
         }
         
         
