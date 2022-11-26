@@ -111,7 +111,7 @@
                     } else {
                         pushPlySubfolder = configuration.settings.plys;
                     }
-                    playlistHandler.writePlaylistToFile((pushPlySubfolder + receivedPushPlyObj.svPlyFilename), receivedPushPlyObj.uiLdPly);
+                    playlistHandler.writePlaylistToFile(receivedPushPlyObj.uiLdPly, (pushPlySubfolder + "/" +  receivedPushPlyObj.svPlyFilename));
                 });
                 break;
                 
