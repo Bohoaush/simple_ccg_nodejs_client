@@ -1,16 +1,25 @@
 # simple_ccg_nodejs_client
 
 ## Description
-This node.js app is meant to be simple multiplatform CasparCG client.
+This node.js app is a simple multiplatform CasparCG client.
 
 ## Warning
-This project is in early developement stage (and also my first node.js app). Do not ever use in production enviroments.
+This app is still in development and it is also my first node.js app, therefore I don't recommend using it in production enviroments
 
-## How to use at the moment
-Keep in mind, that this is not how the product will be used when finalized. These are just instructions to help you start if you want to try this software before it has all necessary functions implemented.<br />
-<br />
-Run CasparCG<br />
-Run CasparCG media-scanner<br />
-<br />
-Suply a JSON playlist similar to playlist_template.json, but containing files that are available to CasparCG in its media folder.
-Set start mode of the first item in the playlist to fixed and specify time you want to start playing in this format YYYYMMddhhmmss.
+## Prerequisities
+- node.js runtime
+- web browser (preferably chromium based)
+- git
+
+Then you can just clone this repository
+
+## How to use
+- run CasparCG media scanner
+- run CasparCG
+- run this app with "node main.js"
+- go to the webinterface, by default running at 127.0.0.1:8084
+- to change settings, edit the settings.json file, that is generated after the first run
+
+## What's next
+- To track what's going on with this project in the issues tab.
+- You can also report bugs you find or suggest new features.
