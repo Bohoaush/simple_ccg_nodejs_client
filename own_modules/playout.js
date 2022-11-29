@@ -44,11 +44,16 @@ playStatus.on('statusChanged', function(){
 async function startPlayingFromFixed() {
     var previousPlitemNumber = -2;
     console.log(JSON.stringify(playlistHandler.playlist.PlaylistItems));
+    var isLastItem = true;
     for (plitem of playlistHandler.playlist.PlaylistItems) {
         previousPlitemNumber++;
         if (plitem.startTime > timeHandler.currentTime) {
+            isLastItem = false;
             break;
         }
+    }
+    if (isLastItem) {
+        previousPlitemNumber++;
     }
     var seekAmount = Math.floor((timeHandler.currentTime - playlistHandler.playlist.PlaylistItems[previousPlitemNumber].startTime)/40);
     play(previousPlitemNumber, seekAmount, false);
