@@ -120,6 +120,7 @@
                     }
                     playlistHandler.writePlaylistToFile(receivedPushPlyObj.uiLdPly, (pushPlySubfolder + "/" +  receivedPushPlyObj.svPlyFilename));
                 });
+                res.end();
                 break;
                 
                 
