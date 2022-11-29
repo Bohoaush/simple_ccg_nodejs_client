@@ -59,9 +59,10 @@ playlistUpdated.on('plyupdfin', function() {
     writePlaylistToFile(module.exports.playlist, configuration.settings.last_ply);
 });
 
+//TODO skip duration assign doesn't work as intended currently
 async function loadPlaylistFromFile(filename, startTimeSource, skipDuraAssign, skipUpdaFin) { 
     return new Promise(resolve => {
-        fs.readFile(filename, (err, data) => {
+        fs.readFile(filename, 'utf-8', (err, data) => {
                 if (data != null) {
                     switch(startTimeSource) {
                         case "filename":

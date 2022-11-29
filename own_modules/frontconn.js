@@ -117,17 +117,24 @@
                 
                 
             case "/avaPlys":
-                //const avaPlys = {DailyPlaylists, StandardPlaylists};
                 var DailyPlaylists = new Promise(resolve => {
                     playlistHandler.listAvailablePlaylists(configuration.settings.daily_plys).then(filenames => {
-                        resolve(filenames);
+                        var fdfilenames = [];
+                        for (filename of filenames) {
+                            fdfilenames.push(configuration.settings.daily_plys + filename);
+                        }
+                        resolve(fdfilenames);
                     }).catch(err => {
                         throw err;
                     });
                 });
                 var StandardPlaylists = new Promise(resolve => {
                     playlistHandler.listAvailablePlaylists(configuration.settings.plys).then(filenames => {
-                        resolve(filenames);
+                        var fdfilenames = [];
+                        for (filename of filenames) {
+                            fdfilenames.push(configuration.settings.plys + filename);
+                        }
+                        resolve(fdfilenames);
                     }).catch(err => {
                         throw err;
                     });
@@ -141,7 +148,24 @@
                     res.end();
                 });
                 break;
-                
+            
+            
+            case "/openPlyFile":
+                var opnPlyName = "";
+                req.on('data', function(data) {
+                    opnPlyName += data;
+                });
+                req.on('end', function() {
+                    console.log(opnPlyName);
+                    playlistHandler.loadPlaylistFromFile(opnPlyName, "firstitem", false, true).then(uiPly => {
+                        res.write(uiPly);
+                        res.end();
+                    }).catch(err => {
+                        console.log(err);//TODO
+                    });
+                });
+                break;
+            
                 
             default:
                 fs.readFile('ply_editor.html', function(err, data) {

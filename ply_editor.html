@@ -209,6 +209,7 @@
         
         var selectedPlyitem = -1;
         var selectedAddItem = -1;
+        var selectedPlyMenuItem = -1;
         const melStat = {state:"N/A",playId:"N/A",playPth:"N/A"}
         var previousPlaId = -1;
         var onlinePly = true;
@@ -421,14 +422,27 @@
             var avaPlysObj = JSON.parse(httpGet(currentUrl + "/avaPlys"));
             console.log(avaPlysObj);
             var plyMenuToDraw = "Available playlists: <br>";
+            var i = -1;
             for (plfi of avaPlysObj[0]) {
-                plyMenuToDraw += (plfi + "<br>");
+                i++;
+                plyMenuToDraw += ("<div class=\"plyMenuPly\" id=p\"" + i + "\">" + plfi + "</div><br>");
             }
+            i = -1;
             for (plfi of avaPlysObj[1]) {
-                plyMenuToDraw += (plfi + "<br>");
+                i++;
+                plyMenuToDraw += ("<div class=\"plyMenuPly\" id=dp\"" + i + "\">" + plfi + "</div><br>");
             }
-            plyMenuToDraw += "<br><input id=\"svPlyIsDaily\" type=\"checkbox\"><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\"><input id=\"dailyStartTime\" type=\"datetime-local\"><input id=\"svDaiPlyBtn\" value=\"save daily ply\" type=\"submit\">";
+            plyMenuToDraw += "<input id=\"ldPlyFromFileBtn\" value=\"Load playlist from file\" type=\"submit\"><br><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\"><input id=\"dailyStartTime\" type=\"datetime-local\"><input id=\"svDaiPlyBtn\" value=\"save daily ply\" type=\"submit\">";
             document.getElementById("playlistMenu").innerHTML = plyMenuToDraw;
+            $(".plyMenuPly").click(function(){
+                if (selectedPlyMenuItem != -1) { document.getElementById(selectedPlyMenuItem).classList.remove("selectedAdd"); }
+                selectedPlyMenuItem = this.id;
+                document.getElementById(selectedPlyMenuItem).classList.add("selectedAdd");
+            });
+            $('#ldPlyFromFileBtn').click(function() {
+                uiLdPly = JSON.parse(httpPost((currentUrl + "/openPlyFile"), document.getElementById(selectedPlyMenuItem).innerHTML));
+                DrawPlyInUI();
+            });
             $('#svPlyBtn').click(function(){
                 var svPlyFilename = document.getElementById("svPlyName").value;
                 const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk:false, uiLdPly};
@@ -518,8 +532,9 @@
         
         function httpPost(url, data) {
             var xmlHttp = new XMLHttpRequest();
-            xmlHttp.open("POST", url, true);
+            xmlHttp.open("POST", url, false);
             xmlHttp.send(data);
+            return xmlHttp.responseText;
         }
     </script>
  
