@@ -11,6 +11,8 @@ var nextStartTime;
 var playlist;
 var avaDailyPlys = [];
 var bestDailyPly;
+var nextDailyPly;
+var restartPlaybackAfterPlyLoad = true;
 
 
 module.exports = {
@@ -18,6 +20,7 @@ module.exports = {
     playlist,
     avaDailyPlys,
     bestDailyPly,
+    restartPlaybackAfterPlyLoad,
     //event emitters/listeners
     playlistUpdated,
     //functions
@@ -93,8 +96,17 @@ async function loadPlaylistFromFile(filename, startTimeSource, skipDuraAssign, s
     });
 }
 
-timeHandler.timeEvent.on('everyTenSeconds', function() {
-    if (configuration.settings.daily_enabled = true) { loadDailyPlaylists();}
+setInterval(function() {
+    if (configuration.settings.daily_enabled) { 
+        loadDailyPlaylists();
+    }
+}, 10000);
+
+timeHandler.timeEvent.on('nextDailyPly', function() {
+    if (configuration.settings.daily_enabled && module.exports.nextDailyPly != undefined) {
+        loadPlaylistFromFile((configuration.settings.daily_plys + module.exports.nextDailyPly), "filename", false, false);
+        module.exports.restartPlaybackAfterPlyLoad = true;
+    }
 });
 
 async function loadDailyPlaylists() {
@@ -114,7 +126,14 @@ async function loadDailyPlaylists() {
                     prevdaiply = (prevdaiply + 1);
                 }
             }
-            if (prevdaiply < 0) {prevdaiply = 0;}
+            if (prevdaiply < 0) {
+                prevdaiply = 0;
+            } else if (module.exports.avaDailyPlys[prevdaiply + 1] != undefined) {
+                module.exports.nextDailyPly = module.exports.avaDailyPlys[prevdaiply + 1];
+                tempdaiply = module.exports.avaDailyPlys[prevdaiply + 1].replace(".json","");
+                tempdaiply = tempdaiply.replace(/_/g,":");
+                timeHandler.nextDailyPlyStamp = Date.parse(tempdaiply);
+            }
             module.exports.bestDailyPly = (configuration.settings.daily_plys + module.exports.avaDailyPlys[prevdaiply]);
             resolve(module.exports.bestDailyPly);
         });

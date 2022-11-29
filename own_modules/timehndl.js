@@ -5,12 +5,14 @@ const timeEvent = new EventEmitter();
 
 var currentTime = new Date();
 var nextEventStamp = 9999999999999;
+var nextDailyPlyStamp = 9999999999999;
 
 
 module.exports = {
     //variables
     currentTime,
     nextEventStamp,
+    nextDailyPlyStamp,
     //events
     timeEvent,
     //functions
@@ -21,11 +23,11 @@ module.exports = {
 setInterval(function() {
     module.exports.currentTime = Date.now();
     if (module.exports.currentTime > module.exports.nextEventStamp) {
-        console.log("nextEventStampReached");
         module.exports.timeEvent.emit('nextEvent');
     }
-    if ((module.exports.currentTime%10000) == 0) {
-        timeEvent.emit('everyTenSeconds');
+    if (module.exports.currentTime >= module.exports.nextDailyPlyStamp) {
+        module.exports.timeEvent.emit('nextDailyPly');
+        module.exports.nextDailyPlyStamp = 9999999999999;
     }
 }, 1000);
 
