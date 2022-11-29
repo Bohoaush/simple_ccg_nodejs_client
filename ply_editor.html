@@ -94,6 +94,8 @@
     </div>
     <br>
     <input name="play_btn" class="button" id="play_btn" value="play" type="submit" />
+    <input name="pause_btn" class="button" id="pause_btn" value="pause" type="submit" />
+    <input name="next_btn" class="button" id="next_btn" value="next" type="submit" />
     <input name="stop_btn" class="button" id="stop_btn" value="stop" type="submit" />
     <input name="ldply_btn" class="button" id="ldply_btn" value="Load playlist" type="submit" />
     <input name="mvItemUp" class="button" id="mvItemUp" value="up" type="submit" />
@@ -131,6 +133,13 @@
             var playNow = JSON.stringify(selectedPlyitem);
             console.log(playNow);
             httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/play", playNow);
+            setTimeout(function(){GetCurPly();}, 1000);
+        });
+        $('#pause_btn').click(function(){
+            httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/pause");
+        });
+        $('#next_btn').click(function(){
+            httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/next");
             setTimeout(function(){GetCurPly();}, 1000);
         });
         

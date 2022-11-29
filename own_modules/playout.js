@@ -70,7 +70,7 @@ function pause() {
     ccgtunnel.pause(1,1).then(x => {
         module.exports.state.status = "paused";
         timeHandler.nextEventStamp = 9999999999999;
-    }).cath(err => {
+    }).catch(err => {
         console.log(err); //TODO
     });
 }
@@ -79,13 +79,13 @@ function resume() {
     ccgtunnel.resume(1,1).then(x => {
         module.exports.state.status = "playing";
         loadNextItem();
-    }).cath(err => {
+    }).catch(err => {
         console.log(err); //TODO
     });
 }
 
 function next() {
-    play((module.exports.atItem + 1), false, false);
+    play((module.exports.state.atItem - -1), false, false);
     setTimeout(function() {loadNextItem();}, 1000);
 }
 

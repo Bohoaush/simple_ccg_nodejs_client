@@ -24,7 +24,7 @@
             
                 
             case "/play":
-                switch(playoutHandler.state) {
+                switch(playoutHandler.state.status) {
                     case "paused":
                         playoutHandler.resume();
                         break;
@@ -46,7 +46,7 @@
                 
 
             case "/pause":
-                switch(playoutHandler.state) {
+                switch(playoutHandler.state.status) {
                     case "playing":
                         playoutHandler.pause();
                         break;
@@ -59,9 +59,16 @@
                 break;
                 
                 
+            case "/next":
+                playoutHandler.next();
+                res.end();
+                break;
+                
+                
             case "/stop":
                 playoutHandler.stop();
                 res.end();
+                break;
                 
                 
             case "/plysend":
