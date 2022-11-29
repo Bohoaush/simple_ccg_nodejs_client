@@ -12,6 +12,24 @@
             color: white;
             background-color: #171717;
         }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 100%;
+            border: none;
+            border-radius: 7px;
+            
+            color: white;
+            background-color: #333333;
+            
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background-color: #222222;
+        }
+        .button:active {
+            background-color: #000000;
+        }
         .avClipList
         {
             padding-top: 7px;
@@ -43,73 +61,101 @@
         
         #statusView
         {
-            font-size: 150%;
+            font-size: 130%;
+        }
+        
+        #statusViewTable
+        {
+            text-align: center;
+            width: 100%;
+        }
+        
+        #statusViewTable, th, td
+        {
+            border: 1px solid #000000;
+            border-collapse: collapse;
+        }
+        #plyView, th, td {
+            padding: 8px;
         }
     </style>
  </head>
  <body>
     <div id="statusViewWrapper">
-        <div id="statusView"></div>
+        <div id="statusView">
+            <table id="statusViewTable">
+                <tr><td>time now</td><td>clip elapsed</td><td>clip remaining</td></tr>
+                <tr><td id="curTimeDisp"></td><td id="elapsDisp">--:--:--</td><td id="remainDisp">--:--:--</td></tr>
+                <tr><td>status</td><td>id</td><td>path</td></tr>
+                <tr><td id="statDisp">playing</td><th id="plaIdDisp">N/A</th><th id="plaPatDisp">Not initialized</th></tr>
+                <tr><td>loaded</td><td id="ldIdDisp">N/A</td><td id="ldPatDisp">Not initialized</td></tr>
+            </table>
+        </div>
     </div>
-    <input name="play_btn" id="play_btn" value="play" type="submit" />
-    <input name="stop_btn" id="stop_btn" value="stop" type="submit" />
-    <input name="ldply_btn" id="ldply_btn" value="Load playlist" type="submit" />
-    <input name="mvItemUp" id="mvItemUp" value="up" type="submit" />
-    <input name="mvItemDown" id="mvItemDown" value="down" type="submit" />
-    <input name="syncPly" id="syncPly" value="Upload playlist" type="submit" />
-    <input name="drawDebugInfo" id="drawDebugInfo" value="Draw debug info" type="submit" />
-    <input name="tgglEdit" id="tgglEdit" value="Toggle edit" type="submit" />
-    <input id="tgglAddItem" value="Toggle add clip" type="submit" />
-    <input id="newPlyBtn" value="New playlist" type="submit" />
-    <input id="tglPlyMenu" value="Toggle playlist menu" type="submit" />
+    <br>
+    <input name="play_btn" class="button" id="play_btn" value="play" type="submit" />
+    <input name="pause_btn" class="button" id="pause_btn" value="pause" type="submit" />
+    <input name="next_btn" class="button" id="next_btn" value="next" type="submit" />
+    <input name="stop_btn" class="button" id="stop_btn" value="stop" type="submit" />
+    <input name="ldply_btn" class="button" id="ldply_btn" value="Load playlist" type="submit" />
+    <input name="mvItemUp" class="button" id="mvItemUp" value="up" type="submit" />
+    <input name="mvItemDown" class="button" id="mvItemDown" value="down" type="submit" />
+    <input name="syncPly" class="button" id="syncPly" value="Upload playlist" type="submit" />
+    <input name="drawDebugInfo" class="button" id="drawDebugInfo" value="Draw debug info" type="submit" />
+    <input name="tgglEdit" class="button" id="tgglEdit" value="Toggle edit" type="submit" />
+    <input id="tgglAddItem" class="button" value="Toggle add clip" type="submit" />
+    <input id="newPlyBtn" class="button" value="New playlist" type="submit" />
+    <input id="tglPlyMenu" class="button" value="Toggle playlist menu" type="submit" />
     
     <div id="playlistMenuWrapper">
         <div id="playlistMenu"></div>
     </div>
     <div id="addClipMenuWrapper">
-        <div id="addClipMenu"></div>
+        <table id="addClipMenu"></table>
     </div>
     <div id="inspectorWrapper">
         <div id="inspector"></div>
     </div>
-    <div id="debugView">
-        <div>(de)bug view: </div>
-    </div>
     
     <div id="plyViewWrapper">
         <div>Loaded playlist:</div>
-        <div id="plyView"></div>
+        <table id="plyView">
+            <tr><td>id</td><td>start time</td><td>path</td></tr>
+        </table>
     </div>
  </body>
  
     <script>
         $('#play_btn').click(function(){
-            $.get('/test')
+            var playNow = JSON.stringify(selectedPlyitem);
+            console.log(playNow);
+            httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/play", playNow);
+            setTimeout(function(){GetCurPly();}, 1000);
+        });
+        $('#pause_btn').click(function(){
+            httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/pause");
+        });
+        $('#next_btn').click(function(){
+            httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/next");
+            setTimeout(function(){GetCurPly();}, 1000);
         });
         
         $('#stop_btn').click(function(){
-            //$.get('?act="stop"')
-            var urlParams = new URLSearchParams(window.location.search);
-            urlParams.set('act', 'stop');
-            window.location.search = urlParams;
+            httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/stop");
         });
         
         $('#ldply_btn').click(function(){
-            /*var urlParams = new URLSearchParams(window.location.search);
-            urlParams.set('act', 'loadPly');
-            window.location.search = urlParams;*/
             GetCurPly();
             onlinePly = true;
         });
         
         var templitem1;
-        //var templitem2;
         
         $('#mvItemUp').click(function(){
             templitem1 = uiLdPly.PlaylistItems[selectedPlyitem - 1];
             uiLdPly.PlaylistItems[selectedPlyitem - 1] = uiLdPly.PlaylistItems[selectedPlyitem];
             uiLdPly.PlaylistItems[selectedPlyitem] = templitem1;
-            uiLdPly.PlaylistItems[selectedPlyitem].id -= -1; // += 1 would add it as string in ALL circumstances :/. JS I guess...
+            uiLdPly.PlaylistItems[selectedPlyitem].id -= -1;
             uiLdPly.PlaylistItems[selectedPlyitem - 1].id -= 1;
             selectedPlyitem -= 1;
             UpdateInspector();
@@ -131,10 +177,6 @@
         
         $('#syncPly').click(function(){
             UploadPlaylist();
-        });
-        
-        $('#drawDebugInfo').click(function(){
-            DrawDebug();
         });
         
         $('#tgglEdit').click(function(){
@@ -166,6 +208,7 @@
         
         var selectedPlyitem = -1;
         var selectedAddItem = -1;
+        var selectedPlyMenuItem = -1;
         const melStat = {state:"N/A",playId:"N/A",playPth:"N/A"}
         var previousPlaId = -1;
         var onlinePly = true;
@@ -185,20 +228,28 @@
         }
             
         function DrawPlyInUI() {
-            var webpageUItoDRAW = "";
+            var webpageUItoDRAW = "<tr><td>id</td><td>start time</td><td>duration</td><<td>path</td></tr>";
             var forLoopRun = -1;
             for (plitem of uiLdPly.PlaylistItems) {
                 forLoopRun += 1;
-                webpageUItoDRAW += ("<div class=\"plyitem")
+                webpageUItoDRAW += ("<tr class=\"plyitem")
                 
                 if (forLoopRun%2 == 0) {
                     webpageUItoDRAW += " odd"
                 }
                 
-                var startTimeUTCms = new Date(plitem.startTime * 1000);
-                var startTimeString = startTimeUTCms.getDate() + "." + (startTimeUTCms.getMonth() + 1) + "." + startTimeUTCms.getFullYear() + " " + startTimeUTCms.getHours() + ":" + startTimeUTCms.getMinutes() + ":" + startTimeUTCms.getSeconds();
+                var startTimeUTCms = new Date(Math.floor(plitem.startTime));
+                var startTimeString = startTimeUTCms.toLocaleString('en-GB', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
                 
-                webpageUItoDRAW += ("\" id=\"" + forLoopRun + "\">" + plitem.id + " &nbsp&nbsp " + plitem.path + " &nbsp&nbsp " + startTimeString + " &nbsp&nbsp " + plitem.duration + "</div>"); //current limitation - won't work with ports 80 or 443
+                var plitDurHour = Math.trunc(plitem.duration/3600);
+                if (plitDurHour < 10) {plitDurHour = "0" + plitDurHour;}
+                var plitDurMinu = Math.trunc((plitem.duration-(plitDurHour*60))/60);
+                if (plitDurMinu < 10) {plitDurMinu = "0" + plitDurMinu;}
+                var plitDurSeco = Math.floor(plitem.duration-(plitDurHour*3600)-(plitDurMinu*60));
+                if (plitDurSeco < 10) {plitDurSeco = "0" + plitDurSeco;}
+                var plitDurDisp = plitDurHour + ":" + plitDurMinu + ":" + plitDurSeco;
+                
+                webpageUItoDRAW += ("\" id=\"" + forLoopRun + "\"><td>" + plitem.id + "</td><td>" + startTimeString + "</td><td>" + plitDurDisp + "</td><td>" + plitem.path + "</td></tr>");
             }
             document.getElementById("plyView").innerHTML = webpageUItoDRAW;
             $(".plyitem").click(function(){
@@ -221,11 +272,6 @@
             var plySend = JSON.stringify(uiLdPly);
             httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/plysend", plySend);
             setTimeout(function(){GetCurPly()},2000);
-        }
-        
-        function DrawDebug(){
-            var plyString = JSON.stringify(uiLdPly);
-            document.getElementById("debugView").innerHTML += ("<hr><div>" + plyString + "</div>");
         }
         
         var inspectorDisplayed = false;
@@ -274,7 +320,12 @@
                 $("#insRemove").click(function(){
                     delete uiLdPly.PlaylistItems[selectedPlyitem];
                     uiLdPly.PlaylistItems = uiLdPly.PlaylistItems.filter(aplit => aplit !== null);
-                    console.log(JSON.stringify(uiLdPly));
+                    var increm = -1;
+                    for (uiPlitem of uiLdPly.PlaylistItems) {
+                        increm++;
+                        uiPlitem.id = increm;
+                    }
+                    DrawPlyInUI();
                 });
             }
         }
@@ -291,88 +342,177 @@
         }
         
         function DrawAddClipMenu() {
-            var drawClipsInspector = "Add clip to playlist:";
+            var drawClipsInspector = "<tr><td colspan=2>Add clip to playlist:</td></tr><tr><td>path</td><td>duration</td></tr>";
             var availableClips = JSON.parse(httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/exploreClips"));
             var forLoopRun = 0;
             for (clip in availableClips) {
                 forLoopRun += 1;
-                drawClipsInspector += ("<div id=\"n" + clip + "\" class=\"avClipList");
+                drawClipsInspector += ("<tr id=\"n" + clip + "\" class=\"avClipList");
                 
                 if ((forLoopRun % 2) == 0) {
                     drawClipsInspector += " odd"
                 }
                 
-                drawClipsInspector += ("\">path: " + availableClips[clip].name + "&nbsp&nbspduration: " + availableClips[clip].duration + "s</div>");
+                var plitDurHour = Math.trunc(availableClips[clip].duration/3600);
+                if (plitDurHour < 10) {plitDurHour = "0" + plitDurHour;}
+                var plitDurMinu = Math.trunc((availableClips[clip].duration-(plitDurHour*60))/60);
+                if (plitDurMinu < 10) {plitDurMinu = "0" + plitDurMinu;}
+                var plitDurSeco = Math.floor(availableClips[clip].duration-(plitDurHour*3600)-(plitDurMinu*60));
+                if (plitDurSeco < 10) {plitDurSeco = "0" + plitDurSeco;}
+                var plitDurDisp = plitDurHour + ":" + plitDurMinu + ":" + plitDurSeco;
+                
+                drawClipsInspector += ("\"><td>" + availableClips[clip].name + "</td><td>" + plitDurDisp + "</td></tr>");
             }
-            drawClipsInspector += "<input id=\"addClipBtn\" value=\"Add selected clip\" type=\"submit\">"
+            drawClipsInspector += "<input id=\"addClipBtn\" class=\"button\" value=\"Add selected clip\" type=\"submit\"><input id=\"insClipBtn\" class=\"button\" value=\"insert selected clip\" type=\"submit\">"
             document.getElementById("addClipMenu").innerHTML = drawClipsInspector;
             $(".avClipList").click(function(){
                 if (selectedAddItem != -1) { document.getElementById(selectedAddItem).classList.remove("selectedAdd"); }
                 selectedAddItem = this.id;
                 document.getElementById(selectedAddItem).classList.add("selectedAdd");
             });
-            $("#addClipBtn").click(function(){
+            $("#addClipBtn").click(function(){ 
                 if (selectedAddItem != -1) {
                     const itemToAdd = {id:"",type:"clip",path:"",startMode:"",startTime:"",endAt:"",duration:""};
                     itemToAdd.id = uiLdPly.PlaylistItems.length;
                     itemToAdd.path = availableClips[selectedAddItem.replace("n", "")].name;
                     itemToAdd.startMode = "auto";
+                    itemToAdd.duration = availableClips[selectedAddItem.replace("n", "")].duration;
+                    if (itemToAdd.id > 0) {
+                        itemToAdd.startTime = (uiLdPly.PlaylistItems[itemToAdd.id-1].startTime + (uiLdPly.PlaylistItems[itemToAdd.id-1].duration*1000));
+                    } else {
+                        itemToAdd.startTime = Date.now();
+                    }
                     uiLdPly.PlaylistItems.push(itemToAdd);
                     DrawPlyInUI();
                 } else {
-                    console.log("You cannot add NO item!");
+                    console.log("You cannot add NO item!"); //TODO
+                }
+            });
+            $("#insClipBtn").click(function(){ 
+                if (selectedAddItem != -1 && selectedPlyitem != -1) {
+                    const itemToAdd = {id:"",type:"clip",path:"",startMode:"",startTime:"",endAt:"",duration:""};
+                    itemToAdd.id = selectedPlyitem;
+                    itemToAdd.path = availableClips[selectedAddItem.replace("n", "")].name;
+                    itemToAdd.startMode = "auto";
+                    itemToAdd.duration = availableClips[selectedAddItem.replace("n", "")].duration;
+                    if (itemToAdd.id > 0) {
+                        itemToAdd.startTime = (uiLdPly.PlaylistItems[itemToAdd.id-1].startTime + (uiLdPly.PlaylistItems[itemToAdd.id-1].duration*1000));
+                    } else {
+                        itemToAdd.startTime = Date.now();
+                    }
+                    uiLdPly.PlaylistItems.splice(selectedPlyitem,0,itemToAdd);
+                    for (let i = itemToAdd.id; i < uiLdPly.PlaylistItems.length; i++) {
+                        uiLdPly.PlaylistItems[i].id = i;
+                        uiLdPly.PlaylistItems[i].startTime = (uiLdPly.PlaylistItems[i-1].startTime + (uiLdPly.PlaylistItems[i-1].duration*1000));
+                    }
+                    DrawPlyInUI();
+                } else {
+                    console.log("No clip to add or ply item selected!"); //TODO
                 }
             });
         }
         
         function DrawPlaylistMenu() {
             var avaPlysObj = JSON.parse(httpGet(currentUrl + "/avaPlys"));
-            //TODO Display available playlists and save playlist menu with option to make it daily.
+            console.log(avaPlysObj);
             var plyMenuToDraw = "Available playlists: <br>";
-            for (plfi of avaPlysObj.DailyPlaylists) {
-                plyMenuToDraw += (plfi + "<br>");
+            var i = -1;
+            for (plfi of avaPlysObj[0]) {
+                i++;
+                plyMenuToDraw += ("<div class=\"plyMenuPly\" id=p\"" + i + "\">" + plfi + "</div><br>");
             }
-            for (plfi of avaPlysObj.StandardPlaylists) {
-                plyMenuToDraw += (plfi + "<br>");
+            i = -1;
+            for (plfi of avaPlysObj[1]) {
+                i++;
+                plyMenuToDraw += ("<div class=\"plyMenuPly\" id=dp\"" + i + "\">" + plfi + "</div><br>");
             }
-            plyMenuToDraw += "<br><input id=\"svPlyIsDaily\" type=\"checkbox\"><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\">";
+            plyMenuToDraw += "<input id=\"ldPlyFromFileBtn\" value=\"Load playlist from file\" type=\"submit\"><br><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\"><input id=\"dailyStartTime\" type=\"datetime-local\"><input id=\"svDaiPlyBtn\" value=\"save daily ply\" type=\"submit\">";
             document.getElementById("playlistMenu").innerHTML = plyMenuToDraw;
+            $(".plyMenuPly").click(function(){
+                if (selectedPlyMenuItem != -1) { document.getElementById(selectedPlyMenuItem).classList.remove("selectedAdd"); }
+                selectedPlyMenuItem = this.id;
+                document.getElementById(selectedPlyMenuItem).classList.add("selectedAdd");
+            });
+            $('#ldPlyFromFileBtn').click(function() {
+                uiLdPly = JSON.parse(httpPost((currentUrl + "/openPlyFile"), document.getElementById(selectedPlyMenuItem).innerHTML));
+                DrawPlyInUI();
+            });
             $('#svPlyBtn').click(function(){
                 var svPlyFilename = document.getElementById("svPlyName").value;
-                var svPlyIsDailyChk = document.getElementById("svPlyIsDaily").checked;
-                const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk, uiLdPly}
+                const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk:false, uiLdPly};
                 if (svPlyFilename != "") {
                     httpPost((currentUrl + "/pushPlaylist"), JSON.stringify(pushPlyWithParams));
                 }
                 DrawPlaylistMenu();
             });
+            $('#dailyStartTime').change(function() {
+                uiLdPly.PlaylistItems[0].startTime = (Date.parse(document.getElementById("dailyStartTime").value));
+                for (let i = 1; i < uiLdPly.PlaylistItems.length; i++) {
+                    uiLdPly.PlaylistItems[i].startTime = (uiLdPly.PlaylistItems[i-1].startTime + (uiLdPly.PlaylistItems[i-1].duration * 1000));
+                }
+                DrawPlyInUI();
+            });
+            $('#svDaiPlyBtn').click(function() {
+                var svPlyFilename = ((document.getElementById("dailyStartTime").value).replace(/:/g, "_")) + "_00.json";
+                const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk:true, uiLdPly};
+                if (svPlyFilename != "_00.json") {
+                    httpPost((currentUrl + "/pushPlaylist"), JSON.stringify(pushPlyWithParams));
+                }
+            });
         }
         
         
         
-        setInterval(GetCurrentStatus, 5000);
+        setInterval(GetCurrentStatus, 1000);
         
         function GetCurrentStatus() {
             if (onlinePly) {
                 melstat = JSON.parse(httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/getStatus"));
-                document.getElementById("statusView").innerHTML = melstat.state + ": " + melstat.playId + " " + melstat.playPth;
-                switch (melstat.state) {
+                document.getElementById("statDisp").innerHTML = ("" + melstat.status);
+                document.getElementById("plaIdDisp").innerHTML = melstat.atItem;
+                document.getElementById("ldIdDisp").innerHTML = melstat.loadedNext;
+                document.getElementById("plaPatDisp").innerHTML = uiLdPly.PlaylistItems[melstat.atItem].path;
+                document.getElementById("ldPatDisp").innerHTML = uiLdPly.PlaylistItems[melstat.loadedNext].path;
+                
+                switch (melstat.status) {
                     case "playing":
-                        document.getElementById("statusView").style.color = "lime";
+                        document.getElementById("statDisp").style.color = "lime";
                         break;
                     case "stopped":
-                        document.getElementById("statusView").style.color = "royalblue";
+                        document.getElementById("statDisp").style.color = "royalblue";
                         break;
                     case "trouble":
-                        document.getElementById("statusView").style.color = "red";
+                        document.getElementById("statDisp").style.color = "red";
                 }
-                if (previousPlaId != melstat.state) {
+                if (previousPlaId != melstat.status) {
                     if (previousPlaId != -1) {
                         document.getElementById(previousPlaId).classList.remove("playingItemVi");
                     }
-                    document.getElementById(melstat.playId).classList.add("playingItemVi");
-                    previousPlaId = melstat.playId;
+                    document.getElementById(melstat.atItem).classList.add("playingItemVi");
+                    previousPlaId = melstat.atItem;
                 }
+            }
+            var nowDate = new Date();
+            document.getElementById("curTimeDisp").innerHTML = (nowDate.toString()).replace(/GMT.*/g, "");
+            
+            if (melstat.status == "playing") {
+                var elapsRemain = [];
+                for (var i = melstat.atItem; i <= (melstat.atItem - -1); i++) {
+                    var startNowDiff = Math.abs((nowDate - uiLdPly.PlaylistItems[i].startTime)/1000);
+                    console.log(startNowDiff);
+                
+                    var stNoDiHour = Math.trunc(startNowDiff/3600);
+                    if (stNoDiHour < 10) {stNoDiHour = "0" + stNoDiHour;}
+                    var stNoDiMinu = Math.trunc((startNowDiff-(stNoDiHour*60))/60);
+                    if (stNoDiMinu < 10) {stNoDiMinu = "0" + stNoDiMinu;}
+                    var stNoDiSeco = Math.floor(startNowDiff-(stNoDiHour*3600)-(stNoDiMinu*60));
+                    if (stNoDiSeco < 10) {stNoDiSeco = "0" + stNoDiSeco;}
+                    elapsRemain[i-melstat.atItem] = (stNoDiHour + ":" + stNoDiMinu + ":" + stNoDiSeco);
+                    console.log(elapsRemain);
+                }
+                
+                document.getElementById("elapsDisp").innerHTML = elapsRemain[0];
+                document.getElementById("remainDisp").innerHTML = ("<b>" + elapsRemain[1] + "</b>");
             }
         }
         
@@ -386,8 +526,9 @@
         
         function httpPost(url, data) {
             var xmlHttp = new XMLHttpRequest();
-            xmlHttp.open("POST", url, true);
+            xmlHttp.open("POST", url, false);
             xmlHttp.send(data);
+            return xmlHttp.responseText;
         }
     </script>
  
