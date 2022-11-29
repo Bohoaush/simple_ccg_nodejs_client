@@ -23,7 +23,8 @@ module.exports = {
     //functions
     loadPlaylistFromFile,
     loadDailyPlaylists,
-    writePlaylistToFile
+    writePlaylistToFile,
+    listAvailablePlaylists
 }
 
 setTimeout(function() {

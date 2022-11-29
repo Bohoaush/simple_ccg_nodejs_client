@@ -239,7 +239,7 @@
                 }
                 
                 var startTimeUTCms = new Date(Math.floor(plitem.startTime));
-                var startTimeString = startTimeUTCms.toISOString();
+                var startTimeString = startTimeUTCms.toLocaleString('en-GB', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
                 
                 var plitDurHour = Math.trunc(plitem.duration/3600);
                 if (plitDurHour < 10) {plitDurHour = "0" + plitDurHour;}
@@ -419,7 +419,6 @@
         
         function DrawPlaylistMenu() {
             var avaPlysObj = JSON.parse(httpGet(currentUrl + "/avaPlys"));
-            //TODO Display available playlists and save playlist menu with option to make it daily.
             console.log(avaPlysObj);
             var plyMenuToDraw = "Available playlists: <br>";
             for (plfi of avaPlysObj[0]) {
@@ -428,16 +427,29 @@
             for (plfi of avaPlysObj[1]) {
                 plyMenuToDraw += (plfi + "<br>");
             }
-            plyMenuToDraw += "<br><input id=\"svPlyIsDaily\" type=\"checkbox\"><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\">";
+            plyMenuToDraw += "<br><input id=\"svPlyIsDaily\" type=\"checkbox\"><input id=\"svPlyName\"><input id=\"svPlyBtn\" value=\"save playlist\" type=\"submit\"><input id=\"dailyStartTime\" type=\"datetime-local\"><input id=\"svDaiPlyBtn\" value=\"save daily ply\" type=\"submit\">";
             document.getElementById("playlistMenu").innerHTML = plyMenuToDraw;
             $('#svPlyBtn').click(function(){
                 var svPlyFilename = document.getElementById("svPlyName").value;
-                var svPlyIsDailyChk = document.getElementById("svPlyIsDaily").checked;
-                const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk, uiLdPly}
+                const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk:false, uiLdPly};
                 if (svPlyFilename != "") {
                     httpPost((currentUrl + "/pushPlaylist"), JSON.stringify(pushPlyWithParams));
                 }
                 DrawPlaylistMenu();
+            });
+            $('#dailyStartTime').change(function() {
+                uiLdPly.PlaylistItems[0].startTime = (Date.parse(document.getElementById("dailyStartTime").value));
+                for (let i = 1; i < uiLdPly.PlaylistItems.length; i++) {
+                    uiLdPly.PlaylistItems[i].startTime = (uiLdPly.PlaylistItems[i-1].startTime + (uiLdPly.PlaylistItems[i-1].duration * 1000));
+                }
+                DrawPlyInUI();
+            });
+            $('#svDaiPlyBtn').click(function() {
+                var svPlyFilename = ((document.getElementById("dailyStartTime").value).replace(/:/g, "_")) + "_00.json";
+                const pushPlyWithParams = {svPlyFilename, svPlyIsDailyChk:true, uiLdPly};
+                if (svPlyFilename != "_00.json") {
+                    httpPost((currentUrl + "/pushPlaylist"), JSON.stringify(pushPlyWithParams));
+                }
             });
         }
         
