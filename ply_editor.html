@@ -116,9 +116,6 @@
     <div id="inspectorWrapper">
         <div id="inspector"></div>
     </div>
-    <div id="debugView">
-        <div>(de)bug view: </div>
-    </div>
     
     <div id="plyViewWrapper">
         <div>Loaded playlist:</div>
@@ -148,21 +145,17 @@
         });
         
         $('#ldply_btn').click(function(){
-            /*var urlParams = new URLSearchParams(window.location.search);
-            urlParams.set('act', 'loadPly');
-            window.location.search = urlParams;*/
             GetCurPly();
             onlinePly = true;
         });
         
         var templitem1;
-        //var templitem2;
         
         $('#mvItemUp').click(function(){
             templitem1 = uiLdPly.PlaylistItems[selectedPlyitem - 1];
             uiLdPly.PlaylistItems[selectedPlyitem - 1] = uiLdPly.PlaylistItems[selectedPlyitem];
             uiLdPly.PlaylistItems[selectedPlyitem] = templitem1;
-            uiLdPly.PlaylistItems[selectedPlyitem].id -= -1; // += 1 would add it as string in ALL circumstances :/. JS I guess...
+            uiLdPly.PlaylistItems[selectedPlyitem].id -= -1;
             uiLdPly.PlaylistItems[selectedPlyitem - 1].id -= 1;
             selectedPlyitem -= 1;
             UpdateInspector();
@@ -184,10 +177,6 @@
         
         $('#syncPly').click(function(){
             UploadPlaylist();
-        });
-        
-        $('#drawDebugInfo').click(function(){
-            DrawDebug();
         });
         
         $('#tgglEdit').click(function(){
@@ -283,11 +272,6 @@
             var plySend = JSON.stringify(uiLdPly);
             httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/plysend", plySend);
             setTimeout(function(){GetCurPly()},2000);
-        }
-        
-        function DrawDebug(){
-            var plyString = JSON.stringify(uiLdPly);
-            document.getElementById("debugView").innerHTML += ("<hr><div>" + plyString + "</div>");
         }
         
         var inspectorDisplayed = false;
