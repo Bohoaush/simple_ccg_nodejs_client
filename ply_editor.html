@@ -131,6 +131,7 @@
             var playNow = JSON.stringify(selectedPlyitem);
             console.log(playNow);
             httpPost(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/play", playNow);
+            setTimeout(function(){GetCurPly();}, 1000);
         });
         
         $('#stop_btn').click(function(){
