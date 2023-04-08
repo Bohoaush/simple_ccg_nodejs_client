@@ -75,6 +75,15 @@
             border: 1px solid #000000;
             border-collapse: collapse;
         }
+        #plyViewWrapper thead td {
+            position: sticky;
+            top: 0;
+            background-color: #141414;
+        }
+        #plyViewWrapper {
+            overflow-y: auto;
+            height: 600px;
+        }
         #plyView, th, td {
             padding: 8px;
         }
@@ -120,7 +129,9 @@
     <div id="plyViewWrapper">
         <div>Loaded playlist:</div>
         <table id="plyView">
+            <thead>
             <tr><td>id</td><td>start time</td><td>path</td></tr>
+            </thead>
         </table>
     </div>
  </body>
@@ -228,7 +239,7 @@
         }
             
         function DrawPlyInUI() {
-            var webpageUItoDRAW = "<tr><td>id</td><td>start time</td><td>duration</td><<td>path</td></tr>";
+            var webpageUItoDRAW = "<thead><tr><td>id</td><td>start time</td><td>duration</td><td>path</td></tr></thead><tbody>";
             var forLoopRun = -1;
             for (plitem of uiLdPly.PlaylistItems) {
                 forLoopRun += 1;
@@ -251,7 +262,7 @@
                 
                 webpageUItoDRAW += ("\" id=\"" + forLoopRun + "\"><td>" + plitem.id + "</td><td>" + startTimeString + "</td><td>" + plitDurDisp + "</td><td>" + plitem.path + "</td></tr>");
             }
-            document.getElementById("plyView").innerHTML = webpageUItoDRAW;
+            document.getElementById("plyView").innerHTML = webpageUItoDRAW + "</tbody>";
             $(".plyitem").click(function(){
                 if (selectedPlyitem != -1) { document.getElementById(selectedPlyitem).classList.remove("selected"); }
                 selectedPlyitem = this.id;
