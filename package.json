@@ -1,0 +1,17 @@
+{
+  "name": "simple_ccg_nodejs_client",
+  "version": "0.2.0",
+  "description": "Simple multiplatform CasparCG playout client",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "node main.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "casparcg-connection": "^6.3.3"
+  }
+}

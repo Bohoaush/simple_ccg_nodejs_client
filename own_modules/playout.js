@@ -1,155 +1,280 @@
 var timeHandler = require("./timehndl.js");
 var playlistHandler = require("./plyhndl.js");
 var configuration = require("./settings.js");
-const {CasparCG} = require("casparcg-connection");
+var ccg = require("./ccg.js");
+var logger = require("./logging.js");
 var fs = require("fs");
 
 const EventEmitter = require('events');
 const playStatus = new EventEmitter();
 
-var state = { 
+const NEVER = 9999999999999;
+
+var state = {
     status: "stopped",
     atItem: 0,
-    loadedNext: 0/*, 
+    loadedNext: 0,
+    manualNext: false,  // true = next item is loaded without AUTO and has to be started by us (stills, live inputs)
     currentName: "",
-    nextName: ""*/
-}
+    nextName: ""
+};
+
+var pausedAt;
 
 module.exports = {
     state,
-    startPlayingFromFixed, 
+    playStatus,
+    startPlayingFromFixed,
     play,
     pause,
     resume,
     next,
     stop,
-}
-
-global.ccgtunnel;
-
-
-setTimeout( function() {
-    global.ccgtunnel = new CasparCG(configuration.settings.ccg_ip, configuration.settings.ccg_port);
-    module.exports.ccgtunnel = ccgtunnel;
-}, 1000);
-
-
+};
 
 playStatus.on('statusChanged', function(){
-    fs.writeFile(configuration.settings.state_file, JSON.stringify(module.exports.state), (err) => {
-        if (err) throw err;
+    fs.writeFile(configuration.settings.state_file, JSON.stringify(state), (err) => {
+        if (err) {
+            logger.error("playout", "Couldn't write state file:", err.message);
+        }
     });
 });
 
+function items() {
+    return (playlistHandler.playlist && playlistHandler.playlist.PlaylistItems) || [];
+}
+
+function troubleItem() {
+    return { type: "clip", name: "trouble", path: configuration.settings.trouble_clip, loop: true, duration: 0 };
+}
+
+// index == playlist length means "the trouble clip after the end of the playlist"
+function itemAt(index) {
+    return (index < items().length) ? items()[index] : troubleItem();
+}
+
+function itemLabel(plitem) {
+    if (!plitem) {
+        return "";
+    }
+    if (plitem.type == "decklink") {
+        return plitem.name || ("decklink " + plitem.device);
+    }
+    return plitem.name || plitem.path;
+}
+
+function setStatus(status) {
+    state.status = status;
+    state.currentName = itemLabel(itemAt(state.atItem));
+    playStatus.emit('statusChanged');
+}
+
 async function startPlayingFromFixed() {
-    var previousPlitemNumber = -2;
-    console.log(JSON.stringify(playlistHandler.playlist.PlaylistItems));
-    var isLastItem = true;
-    for (plitem of playlistHandler.playlist.PlaylistItems) {
-        previousPlitemNumber++;
-        if (plitem.startTime > timeHandler.currentTime) {
-            isLastItem = false;
+    var plitems = items();
+    if (plitems.length == 0) {
+        logger.warn("playout", "Can't start playing, playlist is empty");
+        return;
+    }
+    // last item that should already have started
+    var itemToPlay = 0;
+    for (var i = 0; i < plitems.length; i++) {
+        if (plitems[i].startTime <= timeHandler.currentTime) {
+            itemToPlay = i;
+        } else {
             break;
         }
     }
-    if (isLastItem) {
-        previousPlitemNumber++;
-    }
-    var seekAmount = Math.floor((timeHandler.currentTime - playlistHandler.playlist.PlaylistItems[previousPlitemNumber].startTime)/40);
-    play(previousPlitemNumber, seekAmount, false);
+    var startTime = Number(plitems[itemToPlay].startTime);
+    var elapsed = startTime ? Math.max(0, Date.now() - startTime) : 0;
+    play(itemToPlay, Math.floor(elapsed / 40), false);
 }
 
+// seek is in frames (assuming 25 fps)
 function play(id, seek, loop) {
-    console.log(id);
-    ccgtunnel.play(1, 1, playlistHandler.playlist.PlaylistItems[id].path, loop, undefined, undefined, undefined, undefined, seek).then(x => {
-        module.exports.state.status = "playing";
-        module.exports.state.atItem = id;
-        playlistHandler.playlist.PlaylistItems[id].startTime = timeHandler.currentTime;
-        setTimeout(function() {loadNextItem();}, 1000);
+    id = Number(id);
+    if (!Number.isInteger(id) || id < 0 || id >= items().length) {
+        logger.warn("playout", "Can't play item " + id + ", it isn't in the playlist");
+        return Promise.resolve();
+    }
+    var plitem = items()[id];
+    seek = seek || 0;
+    logger.info("playout", "Playing item " + id + " (" + itemLabel(plitem) + ")" + (seek ? " from frame " + seek : ""));
+
+    var playing;
+    if (plitem.type == "decklink") {
+        playing = ccg.playDecklink(plitem.device, plitem.format);
+    } else if (playlistHandler.isTimedItem(plitem)) {
+        playing = ccg.playClip(plitem.path, 0, false);
+    } else {
+        playing = ccg.playClip(plitem.path, seek, loop);
+    }
+    timeHandler.nextEventStamp = NEVER;
+    return playing.then(() => {
+        state.atItem = id;
+        plitem.startTime = Date.now() - (seek * 40);
+        pausedAt = undefined;
+        setStatus("playing");
+        setTimeout(loadNextItem, 1000);
     }).catch(err => {
-        console.log(err); //TODO
+        logger.error("playout", "Couldn't play " + itemLabel(plitem) + ":", err.message);
     });
 }
 
 function pause() {
-    ccgtunnel.pause(1,1).then(x => {
-        module.exports.state.status = "paused";
-        timeHandler.nextEventStamp = 9999999999999;
+    return ccg.pause().then(() => {
+        timeHandler.nextEventStamp = NEVER;
+        pausedAt = Date.now();
+        setStatus("paused");
     }).catch(err => {
-        console.log(err); //TODO
+        logger.error("playout", "Couldn't pause:", err.message);
     });
 }
 
 function resume() {
-    ccgtunnel.resume(1,1).then(x => {
-        module.exports.state.status = "playing";
+    return ccg.resume().then(() => {
+        if (pausedAt != undefined) {
+            // timed items (stills, live) should stay on air for their full duration
+            var current = items()[state.atItem];
+            if (current) {
+                current.startTime += (Date.now() - pausedAt);
+            }
+            pausedAt = undefined;
+        }
+        setStatus("playing");
         loadNextItem();
     }).catch(err => {
-        console.log(err); //TODO
+        logger.error("playout", "Couldn't resume:", err.message);
     });
 }
 
 function next() {
-    play((module.exports.state.atItem - -1), false, false);
-    setTimeout(function() {loadNextItem();}, 1000);
+    var nextItemNumber = state.atItem + 1;
+    if (nextItemNumber >= items().length) {
+        logger.warn("playout", "Already at the last item");
+        return Promise.resolve();
+    }
+    return play(nextItemNumber, 0, false);
 }
 
 function stop() {
-    ccgtunnel.stop(1,1).then(x => {
-        module.exports.state.status = "stopped";
-        timeHandler.nextEventStamp = 9999999999999;
+    return ccg.stop().then(() => {
+        timeHandler.nextEventStamp = NEVER;
+        setStatus("stopped");
     }).catch(err => {
-        console.log(err); //TODO
+        logger.error("playout", "Couldn't stop:", err.message);
     });
+}
+
+timeHandler.timeEvent.on('nextEvent', async function() {
+    if (state.manualNext) {
+        await switchToLoadedItem();
+        return;
+    }
+    try {
+        var foreground = await ccg.foregroundInfo();
+        var expected = itemAt(state.loadedNext);
+        if (
+            foreground &&
+            ccg.sameClip(foreground.name, expected.path) &&
+            (foreground.time == undefined || foreground.time < 2)
+        ) {
+            onItemStarted(state.loadedNext);
+        }
+    } catch (err) {
+        logger.warn("playout", "Couldn't get info from CasparCG:", err.message);
+    }
+});
+
+// Starts the item loaded in the background (used when it wasn't loaded with AUTO)
+async function switchToLoadedItem() {
+    timeHandler.nextEventStamp = NEVER;
+    try {
+        await ccg.playLoaded();
+        onItemStarted(state.loadedNext);
+    } catch (err) {
+        logger.error("playout", "Couldn't start the next item:", err.message);
+        trouble();
+    }
+}
+
+function onItemStarted(index) {
+    timeHandler.nextEventStamp = NEVER;
+    if (index >= items().length) {
+        logger.warn("playout", "Reached end of playlist, playing trouble clip");
+        state.atItem = index;
+        setStatus("trouble");
+        return;
+    }
+    state.atItem = index;
+    items()[index].startTime = Date.now();
+    setStatus("playing");
+    loadNextItem();
 }
 
 function trouble() {
-    ccgtunnel.loadbgAuto(1,1, configuration.settings.trouble_clip, true).catch((err) => {
-        console.log("Couldn't load trouble file!\n" + err);
+    ccg.loadbgClip(configuration.settings.trouble_clip, true, true).catch((err) => {
+        logger.error("playout", "Couldn't load trouble file!", err.message);
     });
-    module.exports.state.status = "trouble";
+    setStatus("trouble");
 }
 
-timeHandler.timeEvent.on('nextEvent', async function() { 
-    var ccgInfo = await ccgtunnel.info(1, 1).then(result => {
-        var currentPlayingName = result.response.data.stage.layer.layer_1.foreground.file.name;
-        currentPlayingName = currentPlayingName.replace(/\..*$/g,"");
-        if (
-            currentPlayingName == playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].path && 
-            result.response.data.stage.layer.layer_1.foreground.file.time[0] < 2
-        ) {
-            module.exports.state.atItem = module.exports.state.loadedNext;
-            loadNextItem();
-        }
-    }).catch(err => {
-        //error getting info from ccg TODO
-        console.log(err);
-    });
-});
-
-function loadNextItem() {
-    var nextItemNumber = (module.exports.state.atItem - -1);
-    if (nextItemNumber < playlistHandler.playlist.PlaylistItems.length) {
-        ccgtunnel.loadbgAuto(1, 1, playlistHandler.playlist.PlaylistItems[nextItemNumber].path).then(() => {
-            module.exports.state.loadedNext = (nextItemNumber);
-            playStatus.emit('statusChanged');
-            ccgtunnel.info(1,1).then(result => { //TODO do this on plyupdfin
-                var remaDur = ((result.response.data.stage.layer.layer_1.foreground.file.time[1] - result.response.data.stage.layer.layer_1.foreground.file.time[0])*1000);
-                playlistHandler.playlist.PlaylistItems[module.exports.state.loadedNext].startTime = (timeHandler.currentTime + remaDur);
-                for (let nnin = (module.exports.state.loadedNext+1); nnin < playlistHandler.playlist.PlaylistItems.length; nnin++) {
-                    playlistHandler.playlist.PlaylistItems[nnin].startTime = (playlistHandler.playlist.PlaylistItems[nnin - 1].startTime + (playlistHandler.playlist.PlaylistItems[nnin - 1].duration*1000));
-                }
-                timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
-            }).catch(err => {
-                console.log(err);
-                timeHandler.nextEventStamp = playlistHandler.playlist.PlaylistItems[nextItemNumber].startTime;
-            });
-        }).catch((err) => {
-            trouble();
-            console.log("Failed to load next item!\n" + err);
-        });
-    } else {
-        trouble();
-        console.log("reached end of playlist"); //TODO
+async function loadNextItem() {
+    var current = items()[state.atItem];
+    if (!current) {
+        return;
     }
+    var nextItemNumber = state.atItem + 1;
+    var nextItem = itemAt(nextItemNumber);
+    if (nextItemNumber >= items().length) {
+        logger.warn("playout", "Last item of the playlist is playing, trouble clip will follow");
+    }
+
+    // AUTO only works when the foreground is a clip that ends by itself, and LOADBG DECKLINK can't do AUTO.
+    var useAuto = !playlistHandler.isTimedItem(current) && nextItem.type != "decklink";
+    try {
+        if (nextItem.type == "decklink") {
+            await ccg.loadbgDecklink(nextItem.device, nextItem.format);
+        } else {
+            await ccg.loadbgClip(nextItem.path, useAuto, nextItem.loop);
+        }
+    } catch (err) {
+        logger.error("playout", "Failed to load next item!", err.message);
+        trouble();
+        return;
+    }
+    state.loadedNext = nextItemNumber;
+    state.manualNext = !useAuto;
+    state.nextName = itemLabel(nextItem);
+    playStatus.emit('statusChanged');
+
+    var switchTime = await currentItemEnd(current);
+    if (switchTime == undefined) {
+        logger.info("playout", itemLabel(current) + " has no duration, waiting for next to be pressed");
+        timeHandler.nextEventStamp = NEVER;
+        return;
+    }
+    if (nextItemNumber < items().length) {
+        items()[nextItemNumber].startTime = switchTime;
+        for (let nnin = (nextItemNumber + 1); nnin < items().length; nnin++) {
+            items()[nnin].startTime = (items()[nnin - 1].startTime + (items()[nnin - 1].duration * 1000));
+        }
+    }
+    timeHandler.nextEventStamp = switchTime;
+}
+
+// Returns the time the current item ends, or undefined if it doesn't end by itself
+async function currentItemEnd(current) {
+    var duration = Number(current.duration) || 0;
+    if (playlistHandler.isTimedItem(current)) {
+        return (duration > 0) ? (Number(current.startTime) + duration * 1000) : undefined;
+    }
+    try {
+        var foreground = await ccg.foregroundInfo();
+        if (foreground && foreground.duration != undefined && foreground.time != undefined) {
+            return Date.now() + ((foreground.duration - foreground.time) * 1000);
+        }
+    } catch (err) {
+        logger.warn("playout", "Couldn't get info from CasparCG:", err.message);
+    }
+    return Number(current.startTime) + duration * 1000;
 }

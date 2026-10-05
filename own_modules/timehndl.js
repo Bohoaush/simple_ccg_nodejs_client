@@ -3,7 +3,7 @@
 const EventEmitter = require('events');
 const timeEvent = new EventEmitter();
 
-var currentTime = new Date();
+var currentTime = Date.now();
 var nextEventStamp = 9999999999999;
 var nextDailyPlyStamp = 9999999999999;
 

@@ -1,182 +1,190 @@
 var fs = require("fs");
-//var playout = require("./playout.js");
 var timeHandler = require("./timehndl.js");
 var configuration = require("./settings.js");
+var ccg = require("./ccg.js");
+var logger = require("./logging.js");
+var media = require("./mediautil.js");
 
 const EventEmitter = require('events');
 const playlistUpdated = new EventEmitter();
 
-var nextStartTime;
-
-var playlist;
-var avaDailyPlys = [];
-var bestDailyPly;
-var nextDailyPly;
-var restartPlaybackAfterPlyLoad = true;
-
-
 module.exports = {
     //variables
-    playlist,
-    avaDailyPlys,
-    bestDailyPly,
-    restartPlaybackAfterPlyLoad,
+    playlist: undefined,
+    avaDailyPlys: [],
+    bestDailyPly: undefined,
+    nextDailyPly: undefined,
+    restartPlaybackAfterPlyLoad: true,
     //event emitters/listeners
     playlistUpdated,
     //functions
     loadPlaylistFromFile,
     loadDailyPlaylists,
     writePlaylistToFile,
-    listAvailablePlaylists
-}
+    listAvailablePlaylists,
+    assignDurationsToPly,
+    isTimedItem,
+    applyStillDurations
+};
 
-setTimeout(function() {
-    module.exports.playlist = playlist;
-}, 5000);
-
-playlistUpdated.on('plyupdini', async function(playlistJson, skipDurAssign, skipUpdFin) { 
-    playlist = JSON.parse(playlistJson);
-    if (!skipDurAssign) {
-        playlist.PlaylistItems.forEach(
-            function(plitem, index){
-                asignDurationsToPly(plitem, index, playlist.PlaylistItems.length, skipUpdFin);
-            }
-        );
-    } else {
-        playlistUpdated.emit('plyupddur', skipUpdFin);
-    }
-    /*if (!skipUpdFin) {
-        module.exports.playlist = playlist;
-        playlistUpdated.emit('plyupdfin');
-    }*/
-});
-
-playlistUpdated.on('plyupddur', function(skipUpdFin) {
-    if (!skipUpdFin) {
-        module.exports.playlist = playlist;
-        playlistUpdated.emit('plyupdfin');
-    }
+playlistUpdated.on('plyupdini', function() {
+    logger.debug("playlistHandler", "Playlist update initialized");
 });
 
 playlistUpdated.on('plyupdfin', function() {
+    logger.info("playlistHandler", "Playlist update completed");
     writePlaylistToFile(module.exports.playlist, configuration.settings.last_ply);
 });
 
-//TODO skip duration assign doesn't work as intended currently
-async function loadPlaylistFromFile(filename, startTimeSource, skipDuraAssign, skipUpdaFin) { 
-    return new Promise(resolve => {
-        fs.readFile(filename, 'utf-8', (err, data) => {
-                if (data != null) {
-                    switch(startTimeSource) {
-                        case "filename":
-                            filename = filename.replace(configuration.settings.daily_plys,"");
-                            filename = filename.replace(/_/g,":");
-                            filename = filename.replace(".json","");
-                            nextStartTime = (Date.parse(filename));
-                            if (!nextStartTime) {
-                                nextStartTime = timeHandler.currentTime;
-                            }
-                            break;
-                        
-                        case "now":
-                            nextStartTime = timeHandler.currentTime;
-                            break;
-                            
-                        default:
-                            nextStartTime = (JSON.parse(data)).PlaylistItems[0].startTime;
-                            break;
-                    }
-                    playlistUpdated.emit('plyupdini', data, skipDuraAssign, skipUpdaFin);
-                    resolve(data);
-                } else if (err) {
-                    console.log(err);
-                }
-        });
-        
-    });
+// Items that don't end on their own in CasparCG (stills, live inputs).
+// The playout switches away from them by itself after their duration
+// (or waits for the operator to press next if they have no duration).
+function isTimedItem(plitem) {
+    return (plitem.type == "decklink" || plitem.type == "still" || plitem.mediaType == "STILL");
+}
+
+// Stills without a duration would end immediately, give them the default one
+function applyStillDurations(playlistToProcess) {
+    for (var plitem of playlistToProcess.PlaylistItems) {
+        if (plitem.type != "decklink" && isTimedItem(plitem) && !(Number(plitem.duration) > 0)) {
+            plitem.duration = Number(configuration.settings.still_duration) || 10;
+        }
+    }
+    return playlistToProcess;
+}
+
+function parseStartTime(value) {
+    var parsed = Number(value);
+    return (value !== "" && !isNaN(parsed)) ? parsed : Date.now();
+}
+
+//filename, startTimeSource ("filename", "now", or anything else = first item), skip duration assign, skip update finish
+//Resolves with the loaded playlist as JSON
+async function loadPlaylistFromFile(filename, startTimeSource, skipDuraAssign, skipUpdaFin) {
+    var data = await fs.promises.readFile(filename, 'utf-8');
+    var newPlaylist = JSON.parse(data);
+    if (!Array.isArray(newPlaylist.PlaylistItems)) {
+        throw new Error(filename + " is not a valid playlist");
+    }
+    playlistUpdated.emit('plyupdini', data, skipDuraAssign, skipUpdaFin);
+
+    var startTime;
+    switch(startTimeSource) {
+        case "filename":
+            startTime = media.dailyPlaylistTime(filename);
+            if (isNaN(startTime)) {
+                startTime = Date.now();
+            }
+            break;
+
+        case "now":
+            startTime = Date.now();
+            break;
+
+        default:
+            startTime = parseStartTime(newPlaylist.PlaylistItems[0]?.startTime);
+            break;
+    }
+
+    if (!skipDuraAssign) {
+        await assignDurationsToPly(newPlaylist, startTime);
+    }
+    playlistUpdated.emit('plyupddur', skipUpdaFin);
+    if (!skipUpdaFin) {
+        module.exports.playlist = newPlaylist;
+        playlistUpdated.emit('plyupdfin');
+    }
+    return JSON.stringify(newPlaylist);
 }
 
 setInterval(function() {
-    if (configuration.settings.daily_enabled) { 
-        loadDailyPlaylists();
+    if (configuration.settings.daily_enabled) {
+        loadDailyPlaylists().catch(err => {
+            logger.warn("playlistHandler", "Couldn't list daily playlists:", err.message);
+        });
     }
 }, 10000);
 
 timeHandler.timeEvent.on('nextDailyPly', function() {
     if (configuration.settings.daily_enabled && module.exports.nextDailyPly != undefined) {
-        loadPlaylistFromFile((configuration.settings.daily_plys + module.exports.nextDailyPly), "filename", false, false);
+        logger.info("playlistHandler", "Switching to daily playlist " + module.exports.nextDailyPly);
         module.exports.restartPlaybackAfterPlyLoad = true;
+        loadPlaylistFromFile((configuration.settings.daily_plys + module.exports.nextDailyPly), "filename", false, false).catch(err => {
+            logger.error("playlistHandler", "Couldn't load daily playlist " + module.exports.nextDailyPly + ":", err.message);
+        });
     }
 });
 
+//Finds the daily playlist that should be playing now (bestDailyPly) and the one that comes next (nextDailyPly)
 async function loadDailyPlaylists() {
-    return new Promise(resolve => {
-        listAvailablePlaylists(configuration.settings.daily_plys).then(playlists => {
-            module.exports.avaDailyPlys = playlists;
-            var prevdaiply = -2
-            var tempdaiply = "";
-            for (daiply of playlists) {
-                prevdaiply++;
-                tempdaiply = daiply.replace(".json","");
-                tempdaiply = tempdaiply.replace(/_/g,":");
-                tempdaiply = Date.parse(tempdaiply);
-                if (tempdaiply > timeHandler.currentTime) {
-                    break;
-                } else if (playlists[prevdaiply+2] == undefined) {
-                    prevdaiply = (prevdaiply + 1);
-                }
-            }
-            if (prevdaiply < 0) {
-                prevdaiply = 0;
-            } else if (module.exports.avaDailyPlys[prevdaiply + 1] != undefined) {
-                module.exports.nextDailyPly = module.exports.avaDailyPlys[prevdaiply + 1];
-                tempdaiply = module.exports.avaDailyPlys[prevdaiply + 1].replace(".json","");
-                tempdaiply = tempdaiply.replace(/_/g,":");
-                timeHandler.nextDailyPlyStamp = Date.parse(tempdaiply);
-            }
-            module.exports.bestDailyPly = (configuration.settings.daily_plys + module.exports.avaDailyPlys[prevdaiply]);
-            resolve(module.exports.bestDailyPly);
-        });
-    });
+    var playlists = await listAvailablePlaylists(configuration.settings.daily_plys);
+    var dated = playlists
+        .map(name => ({ name: name, time: media.dailyPlaylistTime(name) }))
+        .filter(ply => !isNaN(ply.time))
+        .sort((a, b) => a.time - b.time);
+    module.exports.avaDailyPlys = dated.map(ply => ply.name);
+
+    var now = Date.now();
+    var current = dated.filter(ply => ply.time <= now).pop() || dated[0];
+    var next = dated.find(ply => ply.time > now);
+
+    module.exports.nextDailyPly = next ? next.name : undefined;
+    timeHandler.nextDailyPlyStamp = next ? next.time : 9999999999999;
+    module.exports.bestDailyPly = current ? (configuration.settings.daily_plys + current.name) : undefined;
+    return module.exports.bestDailyPly;
 }
 
-function asignDurationsToPly(plitem, index, plyleng, skipUpdaFin) {
+// Asks CasparCG for the duration of every item and chains the start times.
+// Items are processed in order, so start times don't depend on the order CasparCG answers in.
+async function assignDurationsToPly(playlistToProcess, startTime) {
+    var nextStartTime = startTime;
+    for (var plitem of playlistToProcess.PlaylistItems) {
+        await assignDuration(plitem);
+        plitem.startTime = nextStartTime;
+        nextStartTime = (plitem.startTime + (plitem.duration * 1000));
+    }
+    return playlistToProcess;
+}
+
+async function assignDuration(plitem) {
+    var userDuration = Number(plitem.duration) || 0;
     switch(plitem.type) {
-        
         case "clip":
-            global.ccgtunnel.cinf(plitem.path).then(result => {
-                var framecount = result.response.data.duration;
-                var framerate = result.response.data.fps;
-                framerate = framerate.replace("1/","");
-                plitem.duration = (framecount/framerate);
-                plitem.startTime = nextStartTime;
-                nextStartTime = (plitem.startTime + (plitem.duration * 1000));
-                if (plitem.id == (plyleng - 1)) {
-                    playlistUpdated.emit('plyupddur', skipUpdaFin);
+        case "still":
+            try {
+                var info = await ccg.clipInfo(plitem.path);
+                plitem.mediaType = info.type;
+                if (info.type == "STILL" || info.duration <= 0) {
+                    // a picture has no length of its own - without this it would end immediately
+                    plitem.mediaType = "STILL";
+                    plitem.duration = (userDuration > 0) ? userDuration : Number(configuration.settings.still_duration) || 10;
+                } else {
+                    plitem.duration = info.duration;
                 }
-            }).catch(err => {
-                //error getting cinf from ccg TODO
-                console.log("foooooo" + err);
-            });
-        //For now other items than clip are ignored
-        //TODO implement decklink, rtmp, image, templates?
+            } catch (err) {
+                logger.warn("playlistHandler", "Couldn't get info for " + plitem.path + ":", err.message);
+                plitem.duration = userDuration;
+            }
+            break;
+
+        default:
+            // decklink and other live items: duration 0 means "until the operator presses next"
+            plitem.duration = userDuration;
+            break;
     }
 }
 
 async function listAvailablePlaylists(directory) {
-    return new Promise(resolve => {
-        fs.readdir(directory, (err, filenames) => {
-            resolve(filenames);
-        });
-    });
+    return fs.promises.readdir(directory);
 }
 
 async function writePlaylistToFile(playlistToWrite, file) {
-    var plyWriteback = JSON.stringify(playlistToWrite);
-    fs.writeFile(file, plyWriteback, (err) => {
-        if (err) {
-            //TODO handle fs write errors
-            console.log(err);
-        }
-    });
+    if (playlistToWrite == undefined) {
+        return;
+    }
+    try {
+        await fs.promises.writeFile(file, JSON.stringify(playlistToWrite));
+    } catch (err) {
+        logger.error("playlistHandler", "Couldn't write playlist to " + file + ":", err.message);
+    }
 }

@@ -355,6 +355,10 @@
         function DrawAddClipMenu() {
             var drawClipsInspector = "<tr><td colspan=2>Add clip to playlist:</td></tr><tr><td>path</td><td>duration</td></tr>";
             var availableClips = JSON.parse(httpGet(window.location.protocol + "//" + window.location.hostname + ":" + window.location.port + "/exploreClips"));
+            if (!Array.isArray(availableClips)) {
+                alert("Couldn't get clips from CasparCG: " + (availableClips && availableClips.error));
+                availableClips = [];
+            }
             var forLoopRun = 0;
             for (clip in availableClips) {
                 forLoopRun += 1;
@@ -388,6 +392,7 @@
                     itemToAdd.path = availableClips[selectedAddItem.replace("n", "")].name;
                     itemToAdd.startMode = "auto";
                     itemToAdd.duration = availableClips[selectedAddItem.replace("n", "")].duration;
+                    itemToAdd.mediaType = availableClips[selectedAddItem.replace("n", "")].type;
                     if (itemToAdd.id > 0) {
                         itemToAdd.startTime = (uiLdPly.PlaylistItems[itemToAdd.id-1].startTime + (uiLdPly.PlaylistItems[itemToAdd.id-1].duration*1000));
                     } else {
@@ -406,6 +411,7 @@
                     itemToAdd.path = availableClips[selectedAddItem.replace("n", "")].name;
                     itemToAdd.startMode = "auto";
                     itemToAdd.duration = availableClips[selectedAddItem.replace("n", "")].duration;
+                    itemToAdd.mediaType = availableClips[selectedAddItem.replace("n", "")].type;
                     if (itemToAdd.id > 0) {
                         itemToAdd.startTime = (uiLdPly.PlaylistItems[itemToAdd.id-1].startTime + (uiLdPly.PlaylistItems[itemToAdd.id-1].duration*1000));
                     } else {
